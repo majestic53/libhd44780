@@ -164,6 +164,8 @@ trace_str(
 	trace_event(trace_str(_FORMAT_, __VA_ARGS__), NULL, __func__, __FILE__, CAT_STR(__LINE__), true)
 #define TRACE_ENTRY() \
 	trace_event(NULL, "+", __func__, __FILE__, CAT_STR(__LINE__), true)
+#define TRACE_ENTRY_MESSAGE(_FORMAT_, ...) \
+	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "+", __func__, __FILE__, CAT_STR(__LINE__), true)
 #define TRACE_EXIT() \
 	trace_event(NULL, "-", __func__, __FILE__, CAT_STR(__LINE__), true)
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...) \
@@ -172,12 +174,26 @@ trace_str(
 #define TRACE_INIT()
 #define TRACE_EVENT(_FORMAT_, ...)
 #define TRACE_ENTRY()
+#define TRACE_ENTRY_MESSAGE(_FORMAT_, ...)
 #define TRACE_EXIT()
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...)
 #endif // NDEBUG
 
 #define API_INIT 0xFF39
 #define API_VERSION 1
+
+typedef struct __attribute__((__packed__)) hdcmd_t {
+	uint16_t sel : 1;
+	uint16_t dir : 1;
+	uint16_t data7 : 1;
+	uint16_t data6 : 1;
+	uint16_t data5 : 1;
+	uint16_t data4 : 1;
+	uint16_t data3 : 1;
+	uint16_t data2 : 1;
+	uint16_t data1 : 1;
+	uint16_t data0 : 1;
+} hdcmd_t;
 
 inline hderr_t 
 check_input(
@@ -190,6 +206,21 @@ check_input(
 		result = HD_ERR_INVALID;
 	} else if(cont->init != API_INIT) {
 		result = HD_ERR_UNINIT;
+	}
+
+	return result;
+}
+
+inline hderr_t 
+send_command(
+	__in hdcont_t *cont,
+	__in hdcmd_t *cmd
+	)
+{
+	hderr_t result = check_input(cont);
+
+	if(HD_ERR_SUCCESS(result)) {
+		
 	}
 
 	return result;
@@ -308,10 +339,12 @@ hd44780_cursor_show(
 }
 
 hderr_t 
-hd44780_init(
+_hd44780_init(
 	__out hdcont_t *cont,
-	__in uint8_t port_data,
-	__in uint8_t port_ctrl,
+	__in volatile uint8_t *ddr_data,
+	__in volatile uint8_t *port_data,
+	__in volatile uint8_t *ddr_ctrl,
+	__in volatile uint8_t *port_ctrl,
 	__in uint8_t pin_enab,
 	__in uint8_t pin_sel,
 	__in uint8_t pin_dir
@@ -327,7 +360,9 @@ hd44780_init(
 		goto exit;
 	}
 
-	// TODO
+	// TODO: set cont values
+
+	// TODO: wait for device initialization (> 10ms)	
 
 	cont->init = API_INIT;
 
@@ -398,12 +433,7 @@ hd44780_uninit(
 	TRACE_ENTRY();
 
 	if(check_input(cont)) {
-		cont->ctrl.pin_dir = 0;
-		cont->ctrl.pin_enab = 0;
-		cont->ctrl.pin_sel = 0;
-		cont->ctrl.port = 0;
-		cont->data.port = 0;
-		cont->init = 0;
+		memset(cont, 0, sizeof(hdcont_t));
 	}
 
 	TRACE_EXIT();

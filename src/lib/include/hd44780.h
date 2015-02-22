@@ -36,6 +36,10 @@
 extern "C" {
 #endif // __cplusplus
 
+#define DEF_DDR(_BNK_) DDR ## _BNK_
+#define DEF_PORT(_BNK_) PORT ## _BNK_
+#define DEF_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
+
 typedef enum hderr_t {
 	HD_ERR_NONE = 0,
 	HD_ERR_INVALID,
@@ -45,14 +49,16 @@ typedef enum hderr_t {
 #define HD_ERR_SUCCESS(_ERR_) ((_ERR_) == HD_ERR_NONE)
 
 typedef struct _hdcont_ctrl_t {
+	volatile uint8_t *ddr;
+	volatile uint8_t *port;
 	uint8_t pin_dir;
 	uint8_t pin_enab;
 	uint8_t pin_sel;
-	uint8_t port;
 } hdcont_ctrl_t;
 
 typedef struct _hdcont_data_t {
-	uint8_t port;
+	volatile uint8_t *ddr;
+	volatile uint8_t *port;
 } hdcont_data_t;
 
 typedef struct _hdcont_t {
@@ -67,10 +73,17 @@ uint16_t hd44780_version(void);
  * Initialization/Uninitialization routines
  */
 
-hderr_t hd44780_init(
+#define hd44780_init(_CONT_, _DATA_, _CTRL_, _ENB_, _SEL_, _DIR_) \
+	_hd44780_init(_CONT_, &DEF_DDR(_DATA_), &DEF_PORT(_DATA_), &DEF_DDR(_CTRL_), \
+	&DEF_PORT(_CTRL_), DEF_PIN(_CTRL_, _ENB_), DEF_PIN(_CTRL_, _SEL_), \
+	DEF_PIN(_CTRL_, _DIR_))
+
+hderr_t _hd44780_init(
 	__out hdcont_t *cont,
-	__in uint8_t port_data,
-	__in uint8_t port_ctrl,
+	__in volatile uint8_t *ddr_data,
+	__in volatile uint8_t *port_data,
+	__in volatile uint8_t *ddr_ctrl,
+	__in volatile uint8_t *port_ctrl,
 	__in uint8_t pin_enab,
 	__in uint8_t pin_sel,
 	__in uint8_t pin_dir
