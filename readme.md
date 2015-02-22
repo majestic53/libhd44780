@@ -17,6 +17,7 @@ Changelog
 *Updated: 12/22/2014*
 
 * Repo creation
+* Added USART tracing functionality
 
 Usage
 =====
