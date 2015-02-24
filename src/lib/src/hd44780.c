@@ -32,8 +32,7 @@
 #define VER_MIN 1
 #define VER_WEEK 1509
 #define VER_REV 2
-#define VER_STR STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) \
-		"." STR_CAT(VER_WEEK) "." STR_CAT(VER_REV)
+#define VER_STR STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) "." STR_CAT(VER_WEEK) "." STR_CAT(VER_REV)
 
 #define WORD_LEN 8 //bits
 
@@ -178,15 +177,18 @@ trace_str(
 #define CAT_STR(_STR_) _CAT_STR(_STR_)
 #define TRACE_INIT() trace_init()
 #define TRACE_EVENT(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), NULL, __func__, __FILE__, CAT_STR(__LINE__), true)
+	trace_event(trace_str(_FORMAT_, __VA_ARGS__), NULL, __func__, \
+	__FILE__, CAT_STR(__LINE__), true)
 #define TRACE_ENTRY() \
 	trace_event(NULL, "+", __func__, __FILE__, CAT_STR(__LINE__), true)
 #define TRACE_ENTRY_MESSAGE(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "+", __func__, __FILE__, CAT_STR(__LINE__), true)
+	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "+", __func__, \
+	__FILE__, CAT_STR(__LINE__), true)
 #define TRACE_EXIT() \
 	trace_event(NULL, "-", __func__, __FILE__, CAT_STR(__LINE__), true)
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "-", __func__, __FILE__, CAT_STR(__LINE__), true)
+	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "-", __func__, \
+	__FILE__, CAT_STR(__LINE__), true)
 #else
 #define TRACE_INIT()
 #define TRACE_EVENT(_FORMAT_, ...)
@@ -394,7 +396,6 @@ hd44780_uninit(
 const char *
 hd44780_version(void)
 {
-	TRACE_ENTRY();
-	TRACE_EXIT();
-	return VER_STR;
+	return STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) "." \
+			STR_CAT(VER_WEEK) "." STR_CAT(VER_REV);
 }
