@@ -32,7 +32,6 @@
 #define VER_MIN 1
 #define VER_WEEK 1509
 #define VER_REV 2
-#define VER_STR STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) "." STR_CAT(VER_WEEK) "." STR_CAT(VER_REV)
 
 #define WORD_LEN 8 //bits
 
