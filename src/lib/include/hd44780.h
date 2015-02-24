@@ -20,10 +20,11 @@
 #ifndef HD44780_H_
 #define HD44780_H_
 
-//#define NDEBUG
+#define NDEBUG
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <avr/io.h>
 
 #ifndef __in
 #define __in
@@ -32,15 +33,15 @@
 #define __out
 #endif // __out
 
+#define DEF_DDR(_BNK_) DDR ## _BNK_
+#define DEF_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
+#define DEF_PORT(_BNK_) PORT ## _BNK_
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-#define DEF_DDR(_BNK_) DDR ## _BNK_
-#define DEF_PORT(_BNK_) PORT ## _BNK_
-#define DEF_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
-
-typedef enum hderr_t {
+typedef enum _hderr_t {
 	HD_ERR_NONE = 0,
 	HD_ERR_INVALID,
 	HD_ERR_UNINIT,
@@ -48,35 +49,28 @@ typedef enum hderr_t {
 
 #define HD_ERR_SUCCESS(_ERR_) ((_ERR_) == HD_ERR_NONE)
 
-typedef struct _hdcont_ctrl_t {
-	volatile uint8_t *ddr;
-	volatile uint8_t *port;
-	uint8_t pin_dir;
-	uint8_t pin_enab;
-	uint8_t pin_sel;
-} hdcont_ctrl_t;
-
-typedef struct _hdcont_data_t {
-	volatile uint8_t *ddr;
-	volatile uint8_t *port;
-} hdcont_data_t;
-
 typedef struct _hdcont_t {
 	uint16_t init;
-	hdcont_ctrl_t ctrl;
-	hdcont_data_t data;
+	volatile uint8_t *ddr_ctrl;
+	volatile uint8_t *ddr_data;
+	volatile uint8_t *port_ctrl;
+	volatile uint8_t *port_data;
+	uint8_t pin_ctrl_e;
+	uint8_t pin_ctrl_rs;
+	uint8_t pin_ctrl_rw;
 } hdcont_t;
 
-uint16_t hd44780_version(void);
+hderr_t hd44780_command(
+	__in hdcont_t *cont,
+	__in uint8_t rs,
+	__in uint8_t rw,
+	__in uint8_t data
+	);
 
-/**
- * Initialization/Uninitialization routines
- */
-
-#define hd44780_init(_CONT_, _DATA_, _CTRL_, _ENB_, _SEL_, _DIR_) \
-	_hd44780_init(_CONT_, &DEF_DDR(_DATA_), &DEF_PORT(_DATA_), &DEF_DDR(_CTRL_), \
-	&DEF_PORT(_CTRL_), DEF_PIN(_CTRL_, _ENB_), DEF_PIN(_CTRL_, _SEL_), \
-	DEF_PIN(_CTRL_, _DIR_))
+#define hd44780_init(_CONT_, _DATA_, _CTRL_, _RS_, _RW_, _E_) \
+	_hd44780_init(_CONT_, &DEF_DDR(_DATA_), &DEF_PORT(_DATA_), \
+	&DEF_DDR(_CTRL_), &DEF_PORT(_CTRL_), DEF_PIN(_CTRL_, _RS_), \
+	DEF_PIN(_CTRL_, _RW_), DEF_PIN(_CTRL_, _E_))
 
 hderr_t _hd44780_init(
 	__out hdcont_t *cont,
@@ -84,77 +78,16 @@ hderr_t _hd44780_init(
 	__in volatile uint8_t *port_data,
 	__in volatile uint8_t *ddr_ctrl,
 	__in volatile uint8_t *port_ctrl,
-	__in uint8_t pin_enab,
-	__in uint8_t pin_sel,
-	__in uint8_t pin_dir
+	__in uint8_t pin_ctrl_rs,
+	__in uint8_t pin_ctrl_rw,
+	__in uint8_t pin_ctrl_e
 	);
 
 void hd44780_uninit(
-	__in hdcont_t *cont
-	);
-
-/**
- * Cursor manipulation routines
- */
-
-hderr_t hd44780_cursor_blink(
-	__out hdcont_t *cont,
-	__in bool set
-	);
-
-hderr_t hd44780_cursor_home(
 	__out hdcont_t *cont
 	);
 
-hderr_t hd44780_cursor_left(
-	__out hdcont_t *cont
-	);
-
-hderr_t hd44780_cursor_right(
-	__out hdcont_t *cont
-	);
-
-hderr_t hd44780_cursor_set(
-	__out hdcont_t *cont,
-	__in uint8_t row,
-	__in uint8_t col
-	);
-
-hderr_t hd44780_cursor_show(
-	__out hdcont_t *cont,
-	__in bool set
-	);
-
-/**
- * Screen manipulation routines
- */
-
-hderr_t hd44780_screen_clear(
-	__out hdcont_t *cont
-	);
-
-hderr_t hd44780_screen_left(
-	__out hdcont_t *cont
-	);
-
-hderr_t hd44780_screen_right(
-	__out hdcont_t *cont
-	);
-
-/**
- * Screen IO routines
- */
-
-hderr_t hd44780_write_char(
-	__out hdcont_t *cont,
-	__in char ch
-	);
-
-hderr_t hd44780_write_str(
-	__out hdcont_t *cont,
-	__in const char *str,
-	__in uint16_t len
-	);
+const char *hd44780_version(void);
 
 #ifdef __cplusplus
 }

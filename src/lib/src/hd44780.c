@@ -17,23 +17,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <avr/io.h>
+#include <string.h>
 #include <util/delay.h>
 #include "../include/hd44780.h"
 
-#define BIT_CLEAR(_RES_, _VAL_) ((_RES_) &= ~(_VAL_))
-#define BIT_SET(_RES_, _VAL_) ((_RES_) |= (_VAL_))
+#define DELAY_COMMAND 50 //us
+#define DELAY_INIT 50 //ms
+#define DELAY_LATCH 10 //us
+
+#define FLAG_BUSY 7 //bit
+#define FLAG_INIT 0xFF38
+
+#define VER_MAJ 0
+#define VER_MIN 1
+#define VER_WEEK 1509
+#define VER_REV 2
+#define VER_STR STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) \
+		"." STR_CAT(VER_WEEK) "." STR_CAT(VER_REV)
+
+#define WORD_LEN 8 //bits
+
+#define BIT_CLR(_REG_, _BIT_) ((_REG_) &= ~(_BIT_))
+#define BIT_SET(_REG_, _BIT_) ((_REG_) |= (_BIT_))
+
+#define _STR_CAT(_STR_) # _STR_
+#define STR_CAT(_STR_) _STR_CAT(_STR_)
 
 #ifndef NDEBUG
-#define BAUD 9600
+#define BAUD 9600 //kb/sec
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 #include <util/setbaud.h>
 
 #define TRACE_ERR_ENCODE "[TRACE ENCODING FAILED]"
 #define TRACE_ERR_TOO_LONG "[TRACE IS TOO LONG]"
-
 #define TRACE_BUF_LEN_MAX 0x100
 
 static char trace_buf[TRACE_BUF_LEN_MAX] = {0};
@@ -179,161 +196,122 @@ trace_str(
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...)
 #endif // NDEBUG
 
-#define API_INIT 0xFF39
-#define API_VERSION 1
-
-typedef struct __attribute__((__packed__)) hdcmd_t {
-	uint16_t sel : 1;
-	uint16_t dir : 1;
-	uint16_t data7 : 1;
-	uint16_t data6 : 1;
-	uint16_t data5 : 1;
-	uint16_t data4 : 1;
-	uint16_t data3 : 1;
-	uint16_t data2 : 1;
-	uint16_t data1 : 1;
-	uint16_t data0 : 1;
-} hdcmd_t;
-
 inline hderr_t 
-check_input(
+sanitize(
 	__in hdcont_t *cont
 	)
 {
 	hderr_t result = HD_ERR_NONE;
 
-	if(!cont) {
+	TRACE_ENTRY();
+
+	if(!cont || !cont->ddr_ctrl || !cont->ddr_data 
+			|| !cont->port_ctrl || !cont->port_data) {
 		result = HD_ERR_INVALID;
-	} else if(cont->init != API_INIT) {
+	} else if(cont->init != FLAG_INIT) {
 		result = HD_ERR_UNINIT;
 	}
 
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
 	return result;
 }
 
 inline hderr_t 
-send_command(
+busy_wait(
+	__in hdcont_t *cont
+	)
+{
+	uint8_t busy;
+	hderr_t result = sanitize(cont);
+
+	TRACE_ENTRY();
+
+	if(HD_ERR_SUCCESS(result)) {
+
+		// set data pins (d0-d7) as input
+		*cont->ddr_data = 0;
+
+		// set rs/rw pins (low/high)
+		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+		BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+
+		do {
+
+			// latch command
+			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+			_delay_us(DELAY_LATCH);
+
+			// check busy flag
+			busy = (*cont->port_data & _BV(FLAG_BUSY));
+			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+		} while(busy);
+	}
+
+	// clear rs/rw pins
+	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+
+	// set data pins (d0-d7) as output
+	*cont->ddr_data = UINT8_MAX;
+
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd44780_command(
 	__in hdcont_t *cont,
-	__in hdcmd_t *cmd
+	__in uint8_t rs,
+	__in uint8_t rw,
+	__in uint8_t data
 	)
 {
-	hderr_t result = check_input(cont);
+	hderr_t result = sanitize(cont);
+
+	TRACE_ENTRY();
 
 	if(HD_ERR_SUCCESS(result)) {
+
+		// set rs pin
+		if(rs) {
+			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+		} else {
+			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+		}
 		
+		// set rw pin
+		if(rw) {
+			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+		} else {
+			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+		}
+
+		// set data pins (d0-d7) as output
+		*cont->ddr_data = UINT8_MAX;
+
+		// set data pins (d0-d7)
+		*cont->port_data = data;
+
+		// latch command
+		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+		BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+		_delay_us(DELAY_COMMAND);
+		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+
+		// wait for the device to clear the busy flag
+		result = busy_wait(cont);
+		if(!HD_ERR_SUCCESS(result)) {
+			goto exit;
+		}
+
+		// clear rs/rw/data (d0-d7) pins
+		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+		*cont->port_data = 0;
 	}
 
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_blink(
-	__out hdcont_t *cont,
-	__in bool set
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_home(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_left(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_right(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_set(
-	__out hdcont_t *cont,
-	__in uint8_t row,
-	__in uint8_t col
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_cursor_show(
-	__out hdcont_t *cont,
-	__in bool set
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
+exit:
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
 	return result;
 }
@@ -345,9 +323,9 @@ _hd44780_init(
 	__in volatile uint8_t *port_data,
 	__in volatile uint8_t *ddr_ctrl,
 	__in volatile uint8_t *port_ctrl,
-	__in uint8_t pin_enab,
-	__in uint8_t pin_sel,
-	__in uint8_t pin_dir
+	__in uint8_t pin_ctrl_rs,
+	__in uint8_t pin_ctrl_rw,
+	__in uint8_t pin_ctrl_e
 	)
 {
 	hderr_t result = HD_ERR_NONE;
@@ -355,133 +333,68 @@ _hd44780_init(
 	TRACE_INIT();
 	TRACE_ENTRY();
 
-	if(cont->init == API_INIT) {
+	if(!cont || !ddr_ctrl || !ddr_data 
+			|| !port_ctrl || !port_data) {
 		result = HD_ERR_INVALID;
 		goto exit;
 	}
 
-	// TODO: set cont values
+	cont->ddr_ctrl = ddr_ctrl;
+	cont->ddr_data = ddr_data;
+	cont->port_ctrl = port_ctrl;
+	cont->port_data = port_data;
+	cont->pin_ctrl_e = pin_ctrl_e;
+	cont->pin_ctrl_rs = pin_ctrl_rs;
+	cont->pin_ctrl_rw = pin_ctrl_rw;
+	cont->init = FLAG_INIT;
 
-	// TODO: wait for device initialization (> 10ms)	
+	// set ctrl pins as output and zero
+	BIT_SET(*cont->ddr_ctrl, _BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
+			| _BV(cont->pin_ctrl_rw)); 
+	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
+			| _BV(cont->pin_ctrl_rw));
 
-	cont->init = API_INIT;
+	// wait for device initialization
+	_delay_ms(DELAY_INIT);
+
+	// set data pins as output and zero
+	*cont->ddr_data = UINT8_MAX;
+	*cont->port_data = 0;
+
+	// TODO: remove after debugging
+	result = hd44780_command(cont, 0, 0, 0xf);
+	// ---
 
 exit:
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
 	return result;
 }
 
-hderr_t 
-hd44780_screen_clear(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_screen_left(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_screen_right(
-	__out hdcont_t *cont
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
 void 
 hd44780_uninit(
-	__in hdcont_t *cont
+	__out hdcont_t *cont
 	)
 {
 	TRACE_ENTRY();
 
-	if(check_input(cont)) {
+	if(HD_ERR_SUCCESS(sanitize(cont))) {
+
+		// TODO: clear screen, return home, turn off screen
+
+		*cont->port_ctrl = 0;
+		*cont->port_data = 0;
+		*cont->ddr_ctrl = 0;
+		*cont->ddr_data = 0;
 		memset(cont, 0, sizeof(hdcont_t));
 	}
 
 	TRACE_EXIT();
 }
 
-uint16_t 
+const char *
 hd44780_version(void)
 {
 	TRACE_ENTRY();
-	TRACE_EXIT_MESSAGE("API=%i", API_VERSION);
-	return API_VERSION;
-}
-
-hderr_t 
-hd44780_write_char(
-	__out hdcont_t *cont,
-	__in char ch
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
-}
-
-hderr_t 
-hd44780_write_str(
-	__out hdcont_t *cont,
-	__in const char *str,
-	__in uint16_t len
-	)
-{
-	hderr_t result = check_input(cont);
-
-	TRACE_ENTRY();
-
-	if(HD_ERR_SUCCESS(result)) {
-
-		// TODO
-	}
-
-	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
-	return result;
+	TRACE_EXIT();
+	return VER_STR;
 }

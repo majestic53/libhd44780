@@ -18,14 +18,13 @@
  */
 
 #include <string.h>
-#include <avr/io.h>
 #include "../lib/include/hd44780.h"
 
-#define PORT_DATA B
-#define PORT_CTRL C
-#define PIN_ENB 0
-#define PIN_SEL 1
-#define PIN_DIR 2
+#define PIN_CTRL_E 2 // D2
+#define PIN_CTRL_RS 4 // D4
+#define PIN_CTRL_RW 3 // D3
+#define PORT_DATA B // PORTB
+#define PORT_CTRL D // PORTD
 
 int 
 main(void)
@@ -35,7 +34,9 @@ main(void)
 
 	memset(&cont, 0, sizeof(hdcont_t));
 
-	result = hd44780_init(&cont, PORT_DATA, PORT_CTRL, PIN_ENB, PIN_SEL, PIN_DIR);
+	result = hd44780_init(&cont, PORT_DATA, PORT_CTRL, PIN_CTRL_RS, 
+			PIN_CTRL_RW, PIN_CTRL_E);
+
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
@@ -44,11 +45,6 @@ main(void)
 
 exit:
 	hd44780_uninit(&cont);
-
-	// TODO: REMOVE AFTER DEBUG
-	DDRC |= _BV(PC0);
-	PORTC |= _BV(PC0);
-	// ---
 
 	return result;
 }

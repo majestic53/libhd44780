@@ -14,7 +14,11 @@ Changelog
 =========
 
 ###Version 0.1.1509
-*Updated: 12/22/2014*
+*Updated: 12/23/2015*
+
+* Code cleanup (overhaul)
+
+*Updated: 12/22/2015*
 
 * Repo creation
 * Added USART tracing functionality
