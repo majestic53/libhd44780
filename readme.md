@@ -14,6 +14,10 @@ Changelog
 =========
 
 ###Version 0.1.1509
+*Updated: 12/24/2015*
+
+* Added init/uninit commands (tested on a 16x2 LCD and OLED display, cold/warm boot)
+
 *Updated: 12/23/2015*
 
 * Code cleanup (overhaul)

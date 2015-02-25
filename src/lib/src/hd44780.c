@@ -22,8 +22,12 @@
 #include "../include/hd44780.h"
 
 #define DELAY_COMMAND 50 //us
+#define DELAY_COMMAND_CTRL 5 //ms
 #define DELAY_INIT 50 //ms
 #define DELAY_LATCH 10 //us
+
+#define DIR_INPUT 0 //00000000b
+#define DIR_OUTPUT UINT8_MAX //11111111b
 
 #define FLAG_BUSY 7 //bit
 #define FLAG_INIT 0xFF38
@@ -31,24 +35,22 @@
 #define VER_MAJ 0
 #define VER_MIN 1
 #define VER_WEEK 1509
-#define VER_REV 2
+#define VER_REV 3
 
 #define WORD_LEN 8 //bits
 
-#define BIT_CLR(_REG_, _BIT_) ((_REG_) &= ~(_BIT_))
-#define BIT_SET(_REG_, _BIT_) ((_REG_) |= (_BIT_))
-
-#define _STR_CAT(_STR_) # _STR_
-#define STR_CAT(_STR_) _STR_CAT(_STR_)
+#define _CAT_STR(_STR_) # _STR_
+#define CAT_STR(_STR_) _CAT_STR(_STR_)
 
 #ifndef NDEBUG
 #define BAUD 9600 //kb/sec
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <util/setbaud.h>
 
-#define TRACE_ERR_ENCODE "[TRACE ENCODING FAILED]"
-#define TRACE_ERR_TOO_LONG "[TRACE IS TOO LONG]"
+#define TRACE_ERR_ENCODE "TRACE ENCODING FAILED!"
+#define TRACE_ERR_TOO_LONG "TRACE IS TOO LONG!"
 #define TRACE_BUF_LEN_MAX 0x100
 
 static char trace_buf[TRACE_BUF_LEN_MAX] = {0};
@@ -140,9 +142,9 @@ trace_init(void)
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
 #if USE_2X
-	BIT_SET(UCSR0A, _BV(U2X0));
+	UCSR0A |= _BV(U2X0);
 #else
-	BIT_CLEAR(UCSR0A, _BV(U2X0));
+	UCSR0A &= ~_BV(U2X0);
 #endif // USE_2X
 	UCSR0B = (_BV(TXEN0) | _BV(RXEN0));
 	UCSR0C = (_BV(UCSZ01) | _BV(UCSZ00));
@@ -172,8 +174,6 @@ trace_str(
 	return result;
 }
 
-#define _CAT_STR(_STR_) # _STR_
-#define CAT_STR(_STR_) _CAT_STR(_STR_)
 #define TRACE_INIT() trace_init()
 #define TRACE_EVENT(_FORMAT_, ...) \
 	trace_event(trace_str(_FORMAT_, __VA_ARGS__), NULL, __func__, \
@@ -230,31 +230,31 @@ busy_wait(
 	if(HD_ERR_SUCCESS(result)) {
 
 		// set data pins (d0-d7) as input
-		*cont->ddr_data = 0;
+		*cont->ddr_data = DIR_INPUT;
 
 		// set rs/rw pins (low/high)
-		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
-		BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
+		*cont->port_ctrl |= _BV(cont->pin_ctrl_rw);
 
 		do {
 
 			// latch command
-			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
-			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
+			*cont->port_ctrl |= _BV(cont->pin_ctrl_e);
 			_delay_us(DELAY_LATCH);
 
 			// check busy flag
 			busy = (*cont->port_data & _BV(FLAG_BUSY));
-			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
 		} while(busy);
 	}
 
 	// clear rs/rw pins
-	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
-	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+	*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
+	*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
 
 	// set data pins (d0-d7) as output
-	*cont->ddr_data = UINT8_MAX;
+	*cont->ddr_data = DIR_OUTPUT;
 
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
 	return result;
@@ -276,29 +276,29 @@ hd44780_command(
 
 		// set rs pin
 		if(rs) {
-			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+			*cont->port_ctrl |= _BV(cont->pin_ctrl_rs);
 		} else {
-			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
+			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
 		}
 		
 		// set rw pin
 		if(rw) {
-			BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+			*cont->port_ctrl |= _BV(cont->pin_ctrl_rw);
 		} else {
-			BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
 		}
 
 		// set data pins (d0-d7) as output
-		*cont->ddr_data = UINT8_MAX;
+		*cont->ddr_data = DIR_OUTPUT;
 
 		// set data pins (d0-d7)
 		*cont->port_data = data;
 
 		// latch command
-		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
-		BIT_SET(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
+		*cont->port_ctrl |= _BV(cont->pin_ctrl_e);
 		_delay_us(DELAY_COMMAND);
-		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e));
+		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
 
 		// wait for the device to clear the busy flag
 		result = busy_wait(cont);
@@ -307,8 +307,8 @@ hd44780_command(
 		}
 
 		// clear rs/rw/data (d0-d7) pins
-		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rs));
-		BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_rw));
+		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
+		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
 		*cont->port_data = 0;
 	}
 
@@ -350,21 +350,59 @@ _hd44780_init(
 	cont->init = FLAG_INIT;
 
 	// set ctrl pins as output and zero
-	BIT_SET(*cont->ddr_ctrl, _BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
+	*cont->ddr_ctrl |= (_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
 			| _BV(cont->pin_ctrl_rw)); 
-	BIT_CLR(*cont->port_ctrl, _BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
+	*cont->port_ctrl &= ~(_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
 			| _BV(cont->pin_ctrl_rw));
 
 	// wait for device initialization
 	_delay_ms(DELAY_INIT);
 
 	// set data pins as output and zero
-	*cont->ddr_data = UINT8_MAX;
+	*cont->ddr_data = DIR_OUTPUT;
 	*cont->port_data = 0;
 
-	// TODO: remove after debugging
-	result = hd44780_command(cont, 0, 0, 0xf);
-	// ---
+	result = hd44780_command(cont, 0, 0, 0x38); // function set: 8-bit/EN_JP
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
+
+	result = hd44780_command(cont, 0, 0, 0x8); // turn display/cursor/blink off
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
+
+	result = hd44780_command(cont, 0, 0, 0x1); // clear display
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
+
+	result = hd44780_command(cont, 0, 0, 0x6); // entry mode: shift left
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
+
+	result = hd44780_command(cont, 0, 0, 0x2); // set cursor to home
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
+
+	result = hd44780_command(cont, 0, 0, 0xf); // turn display/cursor/blink on
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	_delay_ms(DELAY_COMMAND_CTRL);
 
 exit:
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
@@ -380,21 +418,39 @@ hd44780_uninit(
 
 	if(HD_ERR_SUCCESS(sanitize(cont))) {
 
-		// TODO: clear screen, return home, turn off screen
+		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x1))) { // clear display
+			goto exit;
+		}
+
+		_delay_ms(DELAY_COMMAND_CTRL);
+
+		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x2))) { // set cursor to home
+			goto exit;
+		}
+
+		_delay_ms(DELAY_COMMAND_CTRL);
+
+		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x8))) { // turn display/cursor/blink off
+			goto exit;
+		}
+
+		_delay_ms(DELAY_COMMAND_CTRL);
 
 		*cont->port_ctrl = 0;
 		*cont->port_data = 0;
-		*cont->ddr_ctrl = 0;
-		*cont->ddr_data = 0;
+		*cont->ddr_ctrl &= ~(_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
+				| _BV(cont->pin_ctrl_rw));
+		*cont->ddr_data = DIR_INPUT;
 		memset(cont, 0, sizeof(hdcont_t));
 	}
 
+exit:
 	TRACE_EXIT();
 }
 
 const char *
 hd44780_version(void)
 {
-	return STR_CAT(VER_MAJ) "." STR_CAT(VER_MIN) "." \
-			STR_CAT(VER_WEEK) "." STR_CAT(VER_REV);
+	return CAT_STR(VER_MAJ) "." CAT_STR(VER_MIN) "." \
+			CAT_STR(VER_WEEK) "." CAT_STR(VER_REV);
 }

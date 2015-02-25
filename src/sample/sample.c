@@ -18,6 +18,7 @@
  */
 
 #include <string.h>
+#include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
 #define PIN_CTRL_E 2 // D2
@@ -42,6 +43,8 @@ main(void)
 	}
 
 	// TODO
+	while(1) { _delay_ms(500); }
+	// ---
 
 exit:
 	hd44780_uninit(&cont);
