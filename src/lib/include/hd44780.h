@@ -33,9 +33,32 @@
 #define __out
 #endif // __out
 
-#define DEF_DDR(_BNK_) DDR ## _BNK_
-#define DEF_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
-#define DEF_PORT(_BNK_) PORT ## _BNK_
+#define DEFINE_DDR(_BNK_) DDR ## _BNK_
+#define DEFINE_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
+#define DEFINE_PORT(_BNK_) PORT ## _BNK_
+
+enum {
+	FONT_EN_JP = 0,
+	FONT_EUROPE_1,
+	FONT_EN_RU,
+	FONT_EUROPE_2,
+};
+
+#define FONT_MAX FONT_EUROPE_2
+
+enum {
+	INTERFACE_4_BIT = 0,
+	INTERFACE_8_BIT,
+};
+
+#define INTERFACE_MAX INTERFACE_8_BIT
+
+enum {
+	SHIFT_LEFT = 0,
+	SHIFT_RIGHT,
+};
+
+#define SHIFT_MAX SHIFT_RIGHT
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,48 +66,108 @@ extern "C" {
 
 typedef enum _hderr_t {
 	HD_ERR_NONE = 0,
-	HD_ERR_INVALID,
-	HD_ERR_UNINIT,
+	HD_ERR_INVALID_ARGUMENT,
+	HD_ERR_UNINITIALIZED,
 } hderr_t;
 
 #define HD_ERR_SUCCESS(_ERR_) ((_ERR_) == HD_ERR_NONE)
 
 typedef struct _hdcont_t {
-	uint16_t init;
-	volatile uint8_t *ddr_ctrl;
+	uint16_t flag;
+	uint8_t current_column;
+	uint8_t current_row;
+	bool cursor_blink;
+	bool cursor_show;
+	uint8_t dimension_column;
+	uint8_t dimension_row;
+	volatile uint8_t *ddr_control;
 	volatile uint8_t *ddr_data;
-	volatile uint8_t *port_ctrl;
+	bool display_show;
+	volatile uint8_t *port_control;
 	volatile uint8_t *port_data;
-	uint8_t pin_ctrl_e;
-	uint8_t pin_ctrl_rs;
-	uint8_t pin_ctrl_rw;
+	uint8_t pin_control_direction;
+	uint8_t pin_control_enable;
+	uint8_t pin_control_select;
 } hdcont_t;
 
-hderr_t hd44780_command(
-	__in hdcont_t *cont,
-	__in uint8_t rs,
-	__in uint8_t rw,
-	__in uint8_t data
-	);
+/**
+ * Setup routines
+ */
 
-#define hd44780_init(_CONT_, _DATA_, _CTRL_, _RS_, _RW_, _E_) \
-	_hd44780_init(_CONT_, &DEF_DDR(_DATA_), &DEF_PORT(_DATA_), \
-	&DEF_DDR(_CTRL_), &DEF_PORT(_CTRL_), DEF_PIN(_CTRL_, _RS_), \
-	DEF_PIN(_CTRL_, _RW_), DEF_PIN(_CTRL_, _E_))
+#define hd44780_initialize(_CONT_, _COL_, _ROW_, _INTER_, _FONT_, _SHFT_, _DATA_, \
+		_CTRL_, _RS_, _RW_, _E_) \
+	_hd44780_initialize(_CONT_, _COL_, _ROW_, _INTER_, _FONT_, _SHFT_, \
+	&DEFINE_DDR(_DATA_), &DEFINE_PORT(_DATA_), &DEFINE_DDR(_CTRL_), \
+	&DEFINE_PORT(_CTRL_), DEFINE_PIN(_CTRL_, _RS_), DEFINE_PIN(_CTRL_, _RW_), \
+	DEFINE_PIN(_CTRL_, _E_))
 
-hderr_t _hd44780_init(
-	__out hdcont_t *cont,
+hderr_t _hd44780_initialize(
+	__out hdcont_t *context,
+	__in uint8_t column,
+	__in uint8_t row,
+	__in uint8_t interface,
+	__in uint8_t font,
+	__in uint8_t shift,
 	__in volatile uint8_t *ddr_data,
 	__in volatile uint8_t *port_data,
-	__in volatile uint8_t *ddr_ctrl,
-	__in volatile uint8_t *port_ctrl,
-	__in uint8_t pin_ctrl_rs,
-	__in uint8_t pin_ctrl_rw,
-	__in uint8_t pin_ctrl_e
+	__in volatile uint8_t *ddr_control,
+	__in volatile uint8_t *port_control,
+	__in uint8_t pin_control_select,
+	__in uint8_t pin_control_direction,
+	__in uint8_t pin_control_enable
 	);
 
-void hd44780_uninit(
-	__out hdcont_t *cont
+void hd44780_uninitialize(
+	__out hdcont_t *context
+	);
+
+/**
+ * Cursor control routines
+ */
+
+hderr_t hd44780_cursor(
+	__in hdcont_t *context,
+	__in bool show,
+	__in bool blink
+	);
+
+hderr_t hd44780_cursor_home(
+	__in hdcont_t *context
+	);
+
+hderr_t hd4480_cursor_set(
+	__in hdcont_t *context,
+	__in uint8_t column,
+	__in uint8_t row
+	);
+
+/**
+ * Display control routines
+ */
+
+hderr_t hd44780_display(
+	__in hdcont_t *context,
+	__in bool show
+	);
+
+hderr_t hd44780_display_clear(
+	__in hdcont_t *context
+	);
+
+hderr_t hd44780_display_put(
+	__in hdcont_t *context,
+	__in char input
+	);
+
+/**
+ * Raw device routines
+ */
+
+hderr_t hd44780_command(
+	__in hdcont_t *context,
+	__in uint8_t select,
+	__in uint8_t direction,
+	__in uint8_t data
 	);
 
 const char *hd44780_version(void);

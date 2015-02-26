@@ -3,6 +3,8 @@ LIBHD44780
 
 LIBHD44780 is an AVR library for controlling the HD44780 family of LCDs.
 
+**NOTE:** Only 16x2 panels in 8-bit mode are supported at the moment
+
 Table of Contents
 ===============
 
@@ -14,6 +16,10 @@ Changelog
 =========
 
 ###Version 0.1.1509
+*Updated: 12/25/2015*
+
+* Code refactoring
+
 *Updated: 12/24/2015*
 
 * Added init/uninit commands (tested on a 16x2 LCD and OLED display, cold/warm boot)

@@ -21,33 +21,68 @@
 #include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
+#define DISP_COL 16
+#define DISP_ROW 2
+
 #define PIN_CTRL_E 2 // D2
 #define PIN_CTRL_RS 4 // D4
 #define PIN_CTRL_RW 3 // D3
 #define PORT_DATA B // PORTB
 #define PORT_CTRL D // PORTD
 
+#define MESSAGE "0123456789ABCDEF0123456789ABCDEF-:NEW SCREEN:-"
+
 int 
 main(void)
 {
+	int iter = 9;
 	hdcont_t cont;
+	char *ch = MESSAGE;
 	hderr_t result = HD_ERR_NONE;
 
 	memset(&cont, 0, sizeof(hdcont_t));
 
-	result = hd44780_init(&cont, PORT_DATA, PORT_CTRL, PIN_CTRL_RS, 
-			PIN_CTRL_RW, PIN_CTRL_E);
+	result = hd44780_initialize(&cont, DISP_COL, DISP_ROW, INTERFACE_8_BIT, FONT_EN_JP, 
+			SHIFT_RIGHT, PORT_DATA, PORT_CTRL, PIN_CTRL_RS, PIN_CTRL_RW, PIN_CTRL_E);
 
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
 	// TODO
-	while(1) { _delay_ms(500); }
+	result = hd44780_cursor(&cont, false, false);
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	while(*ch != '\0') {
+
+		result = hd44780_display_put(&cont, *ch);
+		if(!HD_ERR_SUCCESS(result)) {
+			goto exit;
+		}
+
+		++ch;
+	}
+
+	do {
+
+		result = hd44780_display_put(&cont, '0' + iter);
+		if(!HD_ERR_SUCCESS(result)) {
+			goto exit;
+		}
+
+		result = hd4480_cursor_set(&cont, cont.current_column - 1, cont.current_row);
+		if(!HD_ERR_SUCCESS(result)) {
+			goto exit;
+		}
+
+		_delay_ms(1000);
+	} while(iter-- > 0);
 	// ---
 
 exit:
-	hd44780_uninit(&cont);
+	hd44780_uninitialize(&cont);
 
 	return result;
 }

@@ -21,29 +21,8 @@
 #include <util/delay.h>
 #include "../include/hd44780.h"
 
-#define DELAY_COMMAND 50 //us
-#define DELAY_COMMAND_CTRL 5 //ms
-#define DELAY_INIT 50 //ms
-#define DELAY_LATCH 10 //us
-
-#define DIR_INPUT 0 //00000000b
-#define DIR_OUTPUT UINT8_MAX //11111111b
-
-#define FLAG_BUSY 7 //bit
-#define FLAG_INIT 0xFF38
-
-#define VER_MAJ 0
-#define VER_MIN 1
-#define VER_WEEK 1509
-#define VER_REV 3
-
-#define WORD_LEN 8 //bits
-
-#define _CAT_STR(_STR_) # _STR_
-#define CAT_STR(_STR_) _CAT_STR(_STR_)
-
 #ifndef NDEBUG
-#define BAUD 9600 //kb/sec
+#define BAUD 9600
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -56,19 +35,19 @@
 static char trace_buf[TRACE_BUF_LEN_MAX] = {0};
 
 inline void 
-trace_char(
-	__in char ch
+trace_character(
+	__in char input
 	)
 {
 	loop_until_bit_is_set(UCSR0A, UDRE0);
-	UDR0 = ch;
+	UDR0 = input;
 }
 
 inline void
-trace_event(
-	__in const char *str,
+trace_message(
+	__in const char *message,
 	__in const char *prefix,
-	__in const char *funct,
+	__in const char *function,
 	__in const char *file,
 	__in const char *line,
 	__in bool verbose
@@ -82,62 +61,62 @@ trace_event(
 			iter = 0;
 		
 			while(prefix[iter]) {
-				trace_char(prefix[iter++]);
+				trace_character(prefix[iter++]);
 			}
 		}
 
-		if(funct) {
+		if(function) {
 			iter = 0;
 
-			while(funct[iter]) {
-				trace_char(funct[iter++]);
+			while(function[iter]) {
+				trace_character(function[iter++]);
 			}
 
-			trace_char(' ');
+			trace_character(' ');
 		}
 
-		trace_char('(');
+		trace_character('(');
 
 		if(file) {
 			iter = 0;
 
 			while(file[iter]) {
-				trace_char(file[iter++]);
+				trace_character(file[iter++]);
 			}
 
-			trace_char(':');
+			trace_character(':');
 		}
 
 		if(line) {
 			iter = 0;
 
 			while(line[iter]) {
-				trace_char(line[iter++]);
+				trace_character(line[iter++]);
 			}
 		}
 
-		trace_char(')');
+		trace_character(')');
 
-		if(str) {
-			trace_char(':');
-			trace_char(' ');
+		if(message) {
+			trace_character(':');
+			trace_character(' ');
 		}
 	}
 
-	if(str) {
+	if(message) {
 		iter = 0;
 
-		while(str[iter]) {
-			trace_char(str[iter++]);
+		while(message[iter]) {
+			trace_character(message[iter++]);
 		}
 	}
 
-	trace_char('\r');
-	trace_char('\n');
+	trace_character('\r');
+	trace_character('\n');
 }
 
 inline void
-trace_init(void)
+trace_initialize(void)
 {
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
@@ -151,7 +130,7 @@ trace_init(void)
 }
 
 inline char *
-trace_str(
+trace_string(
 	__in const char *format,
 	...
 	)
@@ -174,43 +153,75 @@ trace_str(
 	return result;
 }
 
-#define TRACE_INIT() trace_init()
-#define TRACE_EVENT(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), NULL, __func__, \
-	__FILE__, CAT_STR(__LINE__), true)
+#define TRACE_INITIALIZE() trace_initialize()
+#define TRACE_MESSAGE(_FORMAT_, ...) \
+	trace_message(trace_string(_FORMAT_, __VA_ARGS__), NULL, __func__, \
+	__FILE__, CONCAT_STR(__LINE__), true)
 #define TRACE_ENTRY() \
-	trace_event(NULL, "+", __func__, __FILE__, CAT_STR(__LINE__), true)
+	trace_message(NULL, "+", __func__, __FILE__, CONCAT_STR(__LINE__), true)
 #define TRACE_ENTRY_MESSAGE(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "+", __func__, \
-	__FILE__, CAT_STR(__LINE__), true)
+	trace_message(trace_string(_FORMAT_, __VA_ARGS__), "+", __func__, \
+	__FILE__, CONCAT_STR(__LINE__), true)
 #define TRACE_EXIT() \
-	trace_event(NULL, "-", __func__, __FILE__, CAT_STR(__LINE__), true)
+	trace_message(NULL, "-", __func__, __FILE__, CONCAT_STR(__LINE__), true)
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...) \
-	trace_event(trace_str(_FORMAT_, __VA_ARGS__), "-", __func__, \
-	__FILE__, CAT_STR(__LINE__), true)
+	trace_message(trace_string(_FORMAT_, __VA_ARGS__), "-", __func__, \
+	__FILE__, CONCAT_STR(__LINE__), true)
 #else
-#define TRACE_INIT()
-#define TRACE_EVENT(_FORMAT_, ...)
+#define TRACE_INITIALIZE()
+#define TRACE_MESSAGE(_FORMAT_, ...)
 #define TRACE_ENTRY()
 #define TRACE_ENTRY_MESSAGE(_FORMAT_, ...)
 #define TRACE_EXIT()
 #define TRACE_EXIT_MESSAGE(_FORMAT_, ...)
 #endif // NDEBUG
 
+#define COMMAND_ADDRESS_SET 0x80
+#define COMMAND_CURSOR_HOME 0x2
+#define COMMAND_DISPLAY_CLEAR 0x1
+#define COMMAND_DISPLAY_SET 0x8
+#define COMMAND_ENTRY_MODE 0x4
+#define COMMAND_FUNCTION_SET 0x28
+#define CURSOR_BLINK 0x1
+#define CURSOR_SHOW 0x2
+#define DDR_INPUT 0
+#define DDR_OUTPUT UINT8_MAX
+#define DELAY_COMMAND 50 // us
+#define DELAY_INITIALIZE 50 // ms
+#define DELAY_LATCH 10 // us
+#define DIRECTION_INPUT 1
+#define DIRECTION_OUTPUT 0
+#define DISPLAY_SHOW 0x4
+#define FLAG_BUSY 0x80
+#define FLAG_INITIALIZED 0xFF38
+#define FLAG_INTERFACE 0x10
+#define FLAG_SHIFT_RIGHT 0x2
+#define ROW_ADDRESS_SCALAR 0x40
+#define SELECT_COMMAND 0
+#define SELECT_DATA 1
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 1
+#define VERSION_WEEK 1509
+#define VERSION_REVISION 4
+
+#define _CONCAT_STR(_STR_) # _STR_
+#define CONCAT_STR(_STR_) _CONCAT_STR(_STR_)
+
 inline hderr_t 
 sanitize(
-	__in hdcont_t *cont
+	__in hdcont_t *context
 	)
 {
 	hderr_t result = HD_ERR_NONE;
 
 	TRACE_ENTRY();
 
-	if(!cont || !cont->ddr_ctrl || !cont->ddr_data 
-			|| !cont->port_ctrl || !cont->port_data) {
-		result = HD_ERR_INVALID;
-	} else if(cont->init != FLAG_INIT) {
-		result = HD_ERR_UNINIT;
+	if(!context || !context->ddr_control || !context->ddr_data 
+			|| !context->port_control || !context->port_data) {
+		result = HD_ERR_INVALID_ARGUMENT;
+	} else if(context->flag != FLAG_INITIALIZED) {
+		result = HD_ERR_UNINITIALIZED;
 	}
 
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
@@ -219,42 +230,31 @@ sanitize(
 
 inline hderr_t 
 busy_wait(
-	__in hdcont_t *cont
+	__in hdcont_t *context
 	)
 {
 	uint8_t busy;
-	hderr_t result = sanitize(cont);
+	hderr_t result = sanitize(context);
 
 	TRACE_ENTRY();
 
 	if(HD_ERR_SUCCESS(result)) {
-
-		// set data pins (d0-d7) as input
-		*cont->ddr_data = DIR_INPUT;
-
-		// set rs/rw pins (low/high)
-		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
-		*cont->port_ctrl |= _BV(cont->pin_ctrl_rw);
+		*context->ddr_data = DDR_INPUT;
+		*context->port_control &= ~_BV(context->pin_control_select);
+		*context->port_control |= _BV(context->pin_control_direction);
 
 		do {
-
-			// latch command
-			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
-			*cont->port_ctrl |= _BV(cont->pin_ctrl_e);
+			*context->port_control &= ~_BV(context->pin_control_enable);
+			*context->port_control |= _BV(context->pin_control_enable);
 			_delay_us(DELAY_LATCH);
-
-			// check busy flag
-			busy = (*cont->port_data & _BV(FLAG_BUSY));
-			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
+			busy = ((*context->port_data & FLAG_BUSY) == 1);
+			*context->port_control &= ~_BV(context->pin_control_enable);
 		} while(busy);
 	}
 
-	// clear rs/rw pins
-	*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
-	*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
-
-	// set data pins (d0-d7) as output
-	*cont->ddr_data = DIR_OUTPUT;
+	*context->port_control &= ~_BV(context->pin_control_select);
+	*context->port_control &= ~_BV(context->pin_control_direction);
+	*context->ddr_data = DDR_OUTPUT;
 
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
 	return result;
@@ -262,54 +262,45 @@ busy_wait(
 
 hderr_t 
 hd44780_command(
-	__in hdcont_t *cont,
-	__in uint8_t rs,
-	__in uint8_t rw,
+	__in hdcont_t *context,
+	__in uint8_t select,
+	__in uint8_t direction,
 	__in uint8_t data
 	)
 {
-	hderr_t result = sanitize(cont);
+	hderr_t result = sanitize(context);
 
 	TRACE_ENTRY();
 
 	if(HD_ERR_SUCCESS(result)) {
 
-		// set rs pin
-		if(rs) {
-			*cont->port_ctrl |= _BV(cont->pin_ctrl_rs);
+		if(select) {
+			*context->port_control |= _BV(context->pin_control_select);
 		} else {
-			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
-		}
-		
-		// set rw pin
-		if(rw) {
-			*cont->port_ctrl |= _BV(cont->pin_ctrl_rw);
-		} else {
-			*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
+			*context->port_control &= ~_BV(context->pin_control_select);
 		}
 
-		// set data pins (d0-d7) as output
-		*cont->ddr_data = DIR_OUTPUT;
+		if(direction) {
+			*context->port_control |= _BV(context->pin_control_direction);
+		} else {
+			*context->port_control &= ~_BV(context->pin_control_direction);
+		}
 
-		// set data pins (d0-d7)
-		*cont->port_data = data;
-
-		// latch command
-		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
-		*cont->port_ctrl |= _BV(cont->pin_ctrl_e);
+		*context->ddr_data = DDR_OUTPUT;
+		*context->port_data = data;
+		*context->port_control &= ~_BV(context->pin_control_enable);
+		*context->port_control |= _BV(context->pin_control_enable);
 		_delay_us(DELAY_COMMAND);
-		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_e);
+		*context->port_control &= ~_BV(context->pin_control_enable);
 
-		// wait for the device to clear the busy flag
-		result = busy_wait(cont);
+		result = busy_wait(context);
 		if(!HD_ERR_SUCCESS(result)) {
 			goto exit;
 		}
 
-		// clear rs/rw/data (d0-d7) pins
-		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rs);
-		*cont->port_ctrl &= ~_BV(cont->pin_ctrl_rw);
-		*cont->port_data = 0;
+		*context->port_control &= ~_BV(context->pin_control_select);
+		*context->port_control &= ~_BV(context->pin_control_direction);
+		*context->port_data = 0;
 	}
 
 exit:
@@ -318,91 +309,298 @@ exit:
 }
 
 hderr_t 
-_hd44780_init(
-	__out hdcont_t *cont,
-	__in volatile uint8_t *ddr_data,
-	__in volatile uint8_t *port_data,
-	__in volatile uint8_t *ddr_ctrl,
-	__in volatile uint8_t *port_ctrl,
-	__in uint8_t pin_ctrl_rs,
-	__in uint8_t pin_ctrl_rw,
-	__in uint8_t pin_ctrl_e
+hd44780_cursor(
+	__in hdcont_t *context,
+	__in bool show,
+	__in bool blink
+	)
+{
+	hderr_t result = sanitize(context);
+	uint8_t data = COMMAND_DISPLAY_SET;
+
+	TRACE_ENTRY();
+
+	if(HD_ERR_SUCCESS(result)) {
+
+		if(blink) {
+			data |= CURSOR_BLINK;
+		}
+
+		if(show) {
+			data |= CURSOR_SHOW;
+		}
+
+		if(context->display_show) {
+			data |= DISPLAY_SHOW;
+		}
+
+		result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, data);
+		if(HD_ERR_SUCCESS(result)) {
+			context->cursor_blink = blink;
+			context->cursor_show = show;
+		}
+	}
+
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd44780_cursor_home(
+	__in hdcont_t *context
 	)
 {
 	hderr_t result = HD_ERR_NONE;
 
-	TRACE_INIT();
 	TRACE_ENTRY();
 
-	if(!cont || !ddr_ctrl || !ddr_data 
-			|| !port_ctrl || !port_data) {
-		result = HD_ERR_INVALID;
+	result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, 
+			COMMAND_CURSOR_HOME);
+
+	if(HD_ERR_SUCCESS(result)) {
+		context->current_column = 0;
+		context->current_row = 0;
+	}
+
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd4480_cursor_set(
+	__in hdcont_t *context,
+	__in uint8_t column,
+	__in uint8_t row
+	)
+{
+	uint8_t address;
+	hderr_t result = sanitize(context);
+
+	TRACE_ENTRY();
+
+	if(HD_ERR_SUCCESS(result)) {
+
+		if((column >= context->dimension_column)
+				|| (row >= context->dimension_row)) {
+			result = HD_ERR_INVALID_ARGUMENT;
+			goto exit;
+		}
+
+		address = (row * ROW_ADDRESS_SCALAR) + column;
+		result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, 
+				COMMAND_ADDRESS_SET | address);
+
+		if(HD_ERR_SUCCESS(result)) {
+			context->current_column = column;
+			context->current_row = row;
+		}
+	}
+
+exit:
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd44780_display(
+	__in hdcont_t *context,
+	__in bool show
+	)
+{
+	hderr_t result = sanitize(context);
+	uint8_t data = COMMAND_DISPLAY_SET;
+
+	TRACE_ENTRY();
+
+	if(HD_ERR_SUCCESS(result)) {
+
+		if(show) {
+			data |= DISPLAY_SHOW;
+		}
+
+		if(context->cursor_blink) {
+			data |= CURSOR_BLINK;
+		}
+
+		if(context->cursor_show) {
+			data |= CURSOR_SHOW;
+		}
+
+		result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, data);
+		if(HD_ERR_SUCCESS(result)) {
+			context->display_show = show;
+		}
+	}
+
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd44780_display_clear(
+	__in hdcont_t *context
+	)
+{
+	hderr_t result = HD_ERR_NONE;
+
+	TRACE_ENTRY();
+
+	result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, 
+			COMMAND_DISPLAY_CLEAR);
+
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+hd44780_display_put(
+	__in hdcont_t *context,
+	__in char input
+	)
+{
+	hderr_t result = sanitize(context);
+
+	TRACE_ENTRY();
+
+	if(HD_ERR_SUCCESS(result)) {
+
+		if((context->current_column >= context->dimension_column)
+				&& (context->current_row >= (context->dimension_row - 1))) {
+
+			result = hd44780_display_clear(context);
+			if(!HD_ERR_SUCCESS(result)) {
+				goto exit;
+			}
+
+			result = hd44780_cursor_home(context);
+			if(!HD_ERR_SUCCESS(result)) {
+				goto exit;
+			}
+		} else if(context->current_column >= context->dimension_column) {
+			context->current_column = 0;			
+
+			result = hd4480_cursor_set(context, context->current_column, 
+					++context->current_row);
+			if(!HD_ERR_SUCCESS(result)) {
+				goto exit;
+			}
+		}
+
+		result = hd44780_command(context, SELECT_DATA, DIRECTION_OUTPUT, input);
+		++context->current_column;
+	}
+
+exit:
+	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
+	return result;
+}
+
+hderr_t 
+_hd44780_initialize(
+	__out hdcont_t *context,
+	__in uint8_t column,
+	__in uint8_t row,
+	__in uint8_t interface,
+	__in uint8_t font,
+	__in uint8_t shift,
+	__in volatile uint8_t *ddr_data,
+	__in volatile uint8_t *port_data,
+	__in volatile uint8_t *ddr_control,
+	__in volatile uint8_t *port_control,
+	__in uint8_t pin_control_select,
+	__in uint8_t pin_control_direction,
+	__in uint8_t pin_control_enable
+	)
+{
+	uint8_t data;
+	hderr_t result = HD_ERR_NONE;
+
+	TRACE_INITIALIZE();
+	TRACE_ENTRY();
+
+	if(!context || !column || !ddr_control || !ddr_data 
+			|| !port_control || !port_data || !row
+			|| (font > FONT_MAX)
+			|| (interface > INTERFACE_MAX)
+			|| (shift > SHIFT_MAX)) {
+		result = HD_ERR_INVALID_ARGUMENT;
 		goto exit;
 	}
 
-	cont->ddr_ctrl = ddr_ctrl;
-	cont->ddr_data = ddr_data;
-	cont->port_ctrl = port_ctrl;
-	cont->port_data = port_data;
-	cont->pin_ctrl_e = pin_ctrl_e;
-	cont->pin_ctrl_rs = pin_ctrl_rs;
-	cont->pin_ctrl_rw = pin_ctrl_rw;
-	cont->init = FLAG_INIT;
+	context->current_column = 0;
+	context->current_row = 0;
+	context->cursor_blink = false;
+	context->cursor_show = false;
+	context->ddr_control = ddr_control;
+	context->ddr_data = ddr_data;
+	context->dimension_column = column;
+	context->dimension_row = row;
+	context->display_show = false;
+	context->port_control = port_control;
+	context->port_data = port_data;
+	context->pin_control_direction = pin_control_direction;
+	context->pin_control_enable = pin_control_enable;
+	context->pin_control_select = pin_control_select;	
+	context->flag = FLAG_INITIALIZED;
+	*context->ddr_control |= (_BV(context->pin_control_direction) | _BV(context->pin_control_enable) 
+			| _BV(context->pin_control_select)); 
+	*context->port_control &= ~(_BV(context->pin_control_direction) | _BV(context->pin_control_enable) 
+			| _BV(context->pin_control_select));
+	_delay_ms(DELAY_INITIALIZE);
+	*context->ddr_data = DDR_OUTPUT;
+	*context->port_data = 0;
 
-	// set ctrl pins as output and zero
-	*cont->ddr_ctrl |= (_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
-			| _BV(cont->pin_ctrl_rw)); 
-	*cont->port_ctrl &= ~(_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
-			| _BV(cont->pin_ctrl_rw));
+	data = COMMAND_FUNCTION_SET | font;
 
-	// wait for device initialization
-	_delay_ms(DELAY_INIT);
+	if(interface) {
+		data |= FLAG_INTERFACE;
+	}
 
-	// set data pins as output and zero
-	*cont->ddr_data = DIR_OUTPUT;
-	*cont->port_data = 0;
-
-	result = hd44780_command(cont, 0, 0, 0x38); // function set: 8-bit/EN_JP
+	result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, data);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
-
-	result = hd44780_command(cont, 0, 0, 0x8); // turn display/cursor/blink off
+	result = hd44780_cursor(context, false, false);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
-
-	result = hd44780_command(cont, 0, 0, 0x1); // clear display
+	result = hd44780_display(context, false);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
-
-	result = hd44780_command(cont, 0, 0, 0x6); // entry mode: shift left
+	result = hd44780_display_clear(context);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
+	data = COMMAND_ENTRY_MODE;
 
-	result = hd44780_command(cont, 0, 0, 0x2); // set cursor to home
+	if(shift) {
+		data |= FLAG_SHIFT_RIGHT;
+	}
+
+	result = hd44780_command(context, SELECT_COMMAND, DIRECTION_OUTPUT, data);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
-
-	result = hd44780_command(cont, 0, 0, 0xf); // turn display/cursor/blink on
+	result = hd44780_cursor_home(context);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	_delay_ms(DELAY_COMMAND_CTRL);
+	result = hd44780_display(context, true);
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
+
+	result = hd44780_cursor(context, true, true);
+	if(!HD_ERR_SUCCESS(result)) {
+		goto exit;
+	}
 
 exit:
 	TRACE_EXIT_MESSAGE("Return Value: 0x%x", result);
@@ -410,38 +608,36 @@ exit:
 }
 
 void 
-hd44780_uninit(
-	__out hdcont_t *cont
+hd44780_uninitialize(
+	__out hdcont_t *context
 	)
 {
 	TRACE_ENTRY();
 
-	if(HD_ERR_SUCCESS(sanitize(cont))) {
+	if(HD_ERR_SUCCESS(sanitize(context))) {
 
-		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x1))) { // clear display
+		if(!HD_ERR_SUCCESS(hd44780_display_clear(context))) {
 			goto exit;
 		}
 
-		_delay_ms(DELAY_COMMAND_CTRL);
-
-		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x2))) { // set cursor to home
+		if(!HD_ERR_SUCCESS(hd44780_cursor_home(context))) {
 			goto exit;
 		}
 
-		_delay_ms(DELAY_COMMAND_CTRL);
-
-		if(!HD_ERR_SUCCESS(hd44780_command(cont, 0, 0, 0x8))) { // turn display/cursor/blink off
+		if(!HD_ERR_SUCCESS(hd44780_cursor(context, false, false))) {
 			goto exit;
 		}
 
-		_delay_ms(DELAY_COMMAND_CTRL);
+		if(!HD_ERR_SUCCESS(hd44780_display(context, false))) {
+			goto exit;
+		}
 
-		*cont->port_ctrl = 0;
-		*cont->port_data = 0;
-		*cont->ddr_ctrl &= ~(_BV(cont->pin_ctrl_e) | _BV(cont->pin_ctrl_rs) 
-				| _BV(cont->pin_ctrl_rw));
-		*cont->ddr_data = DIR_INPUT;
-		memset(cont, 0, sizeof(hdcont_t));
+		*context->port_control = 0;
+		*context->port_data = 0;
+		*context->ddr_control &= ~(_BV(context->pin_control_direction) | _BV(context->pin_control_enable) 
+				| _BV(context->pin_control_select));
+		*context->ddr_data = DDR_INPUT;
+		memset(context, 0, sizeof(hdcont_t));
 	}
 
 exit:
@@ -451,6 +647,6 @@ exit:
 const char *
 hd44780_version(void)
 {
-	return CAT_STR(VER_MAJ) "." CAT_STR(VER_MIN) "." \
-			CAT_STR(VER_WEEK) "." CAT_STR(VER_REV);
+	return CONCAT_STR(VERSION_MAJOR) "." CONCAT_STR(VERSION_MINOR) "." \
+			CONCAT_STR(VERSION_WEEK) "." CONCAT_STR(VERSION_REVISION);
 }
