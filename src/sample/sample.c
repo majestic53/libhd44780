@@ -30,14 +30,43 @@
 #define PORT_DATA B // PORTB
 #define PORT_CTRL D // PORTD
 
-#define MESSAGE "0123456789ABCDEF0123456789ABCDEF-:NEW SCREEN:-"
+#define READ_UART
+#ifdef READ_UART
+
+#define BAUD 9600
+#include <util/setbaud.h>
+
+inline void
+uart_initialize(void)
+{
+	UBRR0H = UBRRH_VALUE;
+	UBRR0L = UBRRL_VALUE;
+#if USE_2X
+	UCSR0A |= _BV(U2X0);
+#else
+	UCSR0A &= ~_BV(U2X0);
+#endif // USE_2X
+	UCSR0B = _BV(RXEN0);
+	UCSR0C = (_BV(UCSZ01) | _BV(UCSZ00));
+}
+
+inline char 
+uart_read(void)
+{
+	loop_until_bit_is_set(UCSR0A, RXC0);
+	return UDR0;
+}
+#define UART_INITIALIZE() uart_initialize()
+#define UART_READ() uart_read()
+#else
+#define UART_INITIALIZE()
+#define UART_READ()
+#endif // READ_UART
 
 int 
 main(void)
 {
-	int iter = 9;
 	hdcont_t cont;
-	char *ch = MESSAGE;
 	hderr_t result = HD_ERR_NONE;
 
 	memset(&cont, 0, sizeof(hdcont_t));
@@ -50,35 +79,20 @@ main(void)
 	}
 
 	// TODO
+	uart_initialize();
+
 	result = hd44780_cursor(&cont, false, false);
 	if(!HD_ERR_SUCCESS(result)) {
 		goto exit;
 	}
 
-	while(*ch != '\0') {
+	while(true) {
 
-		result = hd44780_display_put(&cont, *ch);
+		result = hd44780_display_put(&cont, uart_read());
 		if(!HD_ERR_SUCCESS(result)) {
 			goto exit;
 		}
-
-		++ch;
 	}
-
-	do {
-
-		result = hd44780_display_put(&cont, '0' + iter);
-		if(!HD_ERR_SUCCESS(result)) {
-			goto exit;
-		}
-
-		result = hd4480_cursor_set(&cont, cont.current_column - 1, cont.current_row);
-		if(!HD_ERR_SUCCESS(result)) {
-			goto exit;
-		}
-
-		_delay_ms(1000);
-	} while(iter-- > 0);
 	// ---
 
 exit:
