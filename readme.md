@@ -16,6 +16,12 @@ Changelog
 =========
 
 ###Version 0.1.1509
+*Updated: 12/26/2015*
+
+* More code refactoring
+* Removed tracing/error handling
+* Added 4-bit support (partial)
+
 *Updated: 12/25/2015*
 
 * Code refactoring

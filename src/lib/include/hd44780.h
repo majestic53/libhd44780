@@ -20,11 +20,12 @@
 #ifndef HD44780_H_
 #define HD44780_H_
 
-#define NDEBUG
-
-#include <stdbool.h>
 #include <stdint.h>
 #include <avr/io.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 #ifndef __in
 #define __in
@@ -33,66 +34,50 @@
 #define __out
 #endif // __out
 
-#define DEFINE_DDR(_BNK_) DDR ## _BNK_
-#define DEFINE_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
-#define DEFINE_PORT(_BNK_) PORT ## _BNK_
-
-enum {
-	FONT_EN_JP = 0,
-	FONT_EUROPE_1,
-	FONT_EN_RU,
-	FONT_EUROPE_2,
-};
-
-#define FONT_MAX FONT_EUROPE_2
-
-enum {
-	INTERFACE_4_BIT = 0,
-	INTERFACE_8_BIT,
-};
-
-#define INTERFACE_MAX INTERFACE_8_BIT
-
-enum {
-	SHIFT_LEFT = 0,
-	SHIFT_RIGHT,
-};
-
-#define SHIFT_MAX SHIFT_RIGHT
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
-typedef enum _hderr_t {
-	HD_ERR_NONE = 0,
-	HD_ERR_INVALID_ARGUMENT,
-	HD_ERR_UNINITIALIZED,
-} hderr_t;
-
-#define HD_ERR_SUCCESS(_ERR_) ((_ERR_) == HD_ERR_NONE)
-
-typedef struct _hdcont_t {
-	uint16_t flag;
-	uint8_t current_column;
-	uint8_t current_row;
-	bool cursor_blink;
-	bool cursor_show;
-	uint8_t dimension_column;
-	uint8_t dimension_row;
+typedef struct _hdcont_comm_t {
 	volatile uint8_t *ddr_control;
 	volatile uint8_t *ddr_data;
-	bool display_show;
-	volatile uint8_t *port_control;
-	volatile uint8_t *port_data;
 	uint8_t pin_control_direction;
 	uint8_t pin_control_enable;
 	uint8_t pin_control_select;
+	volatile uint8_t *port_control;
+	volatile uint8_t *port_data;
+} hdcont_comm_t;
+
+typedef struct _hdcont_state_t {
+	uint8_t current_column;
+	uint8_t current_row;
+	uint8_t cursor_blink;
+	uint8_t cursor_show;
+	uint8_t dimension_column;
+	uint8_t dimension_row;
+	uint8_t display_show;
+} hdcont_state_t;
+
+typedef struct _hdcont_t {
+	uint8_t interface;
+	hdcont_comm_t comm;
+	hdcont_state_t state;
 } hdcont_t;
 
 /**
  * Setup routines
  */
+
+#define FONT_EN_JP 0
+#define FONT_EUROPE_1 1
+#define FONT_EN_RU 2
+#define FONT_EUROPE_2 3
+
+#define INTERFACE_4_BIT 0
+#define INTERFACE_8_BIT 1
+
+#define SHIFT_LEFT 0
+#define SHIFT_RIGHT 1
+
+#define DEFINE_DDR(_BNK_) DDR ## _BNK_
+#define DEFINE_PIN(_BNK_, _PIN_) P ## _BNK_ ## _PIN_
+#define DEFINE_PORT(_BNK_) PORT ## _BNK_
 
 #define hd44780_initialize(_CONT_, _COL_, _ROW_, _INTER_, _FONT_, _SHFT_, _DATA_, \
 		_CTRL_, _RS_, _RW_, _E_) \
@@ -100,8 +85,7 @@ typedef struct _hdcont_t {
 	&DEFINE_DDR(_DATA_), &DEFINE_PORT(_DATA_), &DEFINE_DDR(_CTRL_), \
 	&DEFINE_PORT(_CTRL_), DEFINE_PIN(_CTRL_, _RS_), DEFINE_PIN(_CTRL_, _RW_), \
 	DEFINE_PIN(_CTRL_, _E_))
-
-hderr_t _hd44780_initialize(
+void _hd44780_initialize(
 	__out hdcont_t *context,
 	__in uint8_t column,
 	__in uint8_t row,
@@ -122,55 +106,66 @@ void hd44780_uninitialize(
 	);
 
 /**
- * Cursor control routines
+ * Cursor routines
  */
 
-hderr_t hd44780_cursor(
+#define CURSOR_BLINK_OFF 0
+#define CURSOR_BLINK_ON 1
+#define CURSOR_OFF 0
+#define CURSOR_ON 1
+
+void hd44780_cursor(
 	__in hdcont_t *context,
-	__in bool show,
-	__in bool blink
+	__in uint8_t show,
+	__in uint8_t blink
 	);
 
-hderr_t hd44780_cursor_home(
+void hd44780_cursor_home(
 	__in hdcont_t *context
 	);
 
-hderr_t hd4480_cursor_set(
+void hd4480_cursor_set(
 	__in hdcont_t *context,
 	__in uint8_t column,
 	__in uint8_t row
 	);
 
 /**
- * Display control routines
+ * Display routines
  */
 
-hderr_t hd44780_display(
+#define DISPLAY_OFF 0
+#define DISPLAY_ON 1
+
+void hd44780_display(
 	__in hdcont_t *context,
-	__in bool show
+	__in uint8_t show
 	);
 
-hderr_t hd44780_display_clear(
+void hd44780_display_clear(
 	__in hdcont_t *context
 	);
 
-hderr_t hd44780_display_put(
+void hd44780_display_putc(
 	__in hdcont_t *context,
 	__in char input
 	);
 
+void hd44780_display_puts(
+	__in hdcont_t *context,
+	__in char *input
+	);
+
 /**
- * Raw device routines
+ * Device routines
  */
 
-hderr_t hd44780_command(
+void hd44780_command(
 	__in hdcont_t *context,
 	__in uint8_t select,
 	__in uint8_t direction,
 	__in uint8_t data
 	);
-
-const char *hd44780_version(void);
 
 #ifdef __cplusplus
 }

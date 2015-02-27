@@ -21,17 +21,14 @@
 #include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
-#define DISP_COL 16
-#define DISP_ROW 2
+#define DISPLAY_COL 16
+#define DISPLAY_ROW 2
 
 #define PIN_CTRL_E 2 // D2
 #define PIN_CTRL_RS 4 // D4
 #define PIN_CTRL_RW 3 // D3
 #define PORT_DATA B // PORTB
 #define PORT_CTRL D // PORTD
-
-#define READ_UART
-#ifdef READ_UART
 
 #define BAUD 9600
 #include <util/setbaud.h>
@@ -56,47 +53,25 @@ uart_read(void)
 	loop_until_bit_is_set(UCSR0A, RXC0);
 	return UDR0;
 }
-#define UART_INITIALIZE() uart_initialize()
-#define UART_READ() uart_read()
-#else
-#define UART_INITIALIZE()
-#define UART_READ()
-#endif // READ_UART
 
 int 
 main(void)
 {
 	hdcont_t cont;
-	hderr_t result = HD_ERR_NONE;
 
 	memset(&cont, 0, sizeof(hdcont_t));
 
-	result = hd44780_initialize(&cont, DISP_COL, DISP_ROW, INTERFACE_8_BIT, FONT_EN_JP, 
+	hd44780_initialize(&cont, DISPLAY_COL, DISPLAY_ROW, INTERFACE_8_BIT, FONT_EN_JP, 
 			SHIFT_RIGHT, PORT_DATA, PORT_CTRL, PIN_CTRL_RS, PIN_CTRL_RW, PIN_CTRL_E);
 
-	if(!HD_ERR_SUCCESS(result)) {
-		goto exit;
-	}
-
-	// TODO
 	uart_initialize();
+	hd44780_cursor(&cont, CURSOR_ON, CURSOR_BLINK_ON);
 
-	result = hd44780_cursor(&cont, false, false);
-	if(!HD_ERR_SUCCESS(result)) {
-		goto exit;
+	while(1) {
+		hd44780_display_putc(&cont, uart_read());
 	}
 
-	while(true) {
-
-		result = hd44780_display_put(&cont, uart_read());
-		if(!HD_ERR_SUCCESS(result)) {
-			goto exit;
-		}
-	}
-	// ---
-
-exit:
 	hd44780_uninitialize(&cont);
 
-	return result;
+	return 0;
 }
