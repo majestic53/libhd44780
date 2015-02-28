@@ -15,7 +15,7 @@ LIBHD44780 is an AVR library for controlling the HD44780 family of LCDs.
 
 ###Features NOT Supported
 
-* No support for commands that read data (with the exception of the busy command)
+* No support for commands that read data from the panel (with the exception of the busy command)
 
 Table of Contents
 ===============
