@@ -20,12 +20,9 @@
 #include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
-#define DISPLAY_COL 16
-#define DISPLAY_ROW 2
-
-#define PIN_CTRL_E 2 // D2
-#define PIN_CTRL_RS 4 // D4
-#define PIN_CTRL_RW 3 // D3
+#define PIN_CTRL_E 2 // PD2
+#define PIN_CTRL_RS 4 // PD4
+#define PIN_CTRL_RW 3 // PD3
 #define PORT_DATA B // PORTB
 #define PORT_CTRL D // PORTD
 
@@ -58,7 +55,7 @@ main(void)
 {
 	hdcont_t cont;
 
-	hd44780_initialize(&cont, DISPLAY_COL, DISPLAY_ROW, INTERFACE_4_BIT, FONT_EN_JP, 
+	hd44780_initialize(&cont, DIMENSION_16_2, INTERFACE_4_BIT, FONT_EN_JP, 
 			PORT_DATA, PORT_CTRL, PIN_CTRL_RS, PIN_CTRL_RW, PIN_CTRL_E);
 
 	uart_initialize();

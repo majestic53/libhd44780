@@ -3,13 +3,26 @@ LIBHD44780
 
 LIBHD44780 is an AVR library for controlling the HD44780 family of LCDs.
 
-**NOTE:** Only 16x2 panels in 8-bit mode are supported at the moment
+###Supported Features
+
+* Compliant with most HD44780 panels (tested with a LCD and OLED panel)
+* Supports both 4 and 8-bit command modes
+* Supports a variety of panel dimensions: 16x1, 16x2, 16x4, 20x2, 20x4, 40x2
+* Additional panel dimensions can be added as needed. See the [Examples](https://github.com/majestic53/libhd44780#examples) section below for more information.
+
+###Features NOT Supported
+
+* No support for commands that read data (with the exception of the busy command)
 
 Table of Contents
 ===============
 
 1. [Changelog](https://github.com/majestic53/libhd44780#changelog)
 2. [Usage](https://github.com/majestic53/libhd44780#usage)
+	* [Build](https://github.com/majestic53/libhd44780#build)
+	* [Examples](https://github.com/majestic53/libhd44780#examples)
+		* [Basic Usage](https://github.com/majestic53/libhd44780#basic-usage)
+		* [Adding Custom Panel Dimensions](https://github.com/majestic53/libhd44780#adding-custom-panel-dimensions)
 3. [License](https://github.com/majestic53/libhd44780#license)
 
 Changelog
@@ -19,7 +32,8 @@ Changelog
 *Updated: 12/28/2015*
 
 * Added 4-bit support
-* Added comments
+* Added panel dimension support
+* Added comments/documentation
 
 *Updated: 12/26/2015*
 
@@ -47,12 +61,20 @@ Changelog
 Usage
 =====
 
+###Build
+
 **NOTE:** You will need to install avr-gcc if you don't already have it.
 
-To use LIBHD44780, simply include the header file ```hd44780.h```, found under ```./src/lib/include```, in your project.
+To use LIBHD44780 in your own project, simply include the header file ```hd44780.h```, found under ```./src/lib/include```, in your project.
 
-To use the sample project, compile the core library using the accompanying makefile. The makefile will produce a series of 
+To build the sample project, compile the core library using the accompanying makefile. The makefile will produce a series of 
 object files (found in the ```./build``` directory), and a series of hex files (found in the ```./bin``` directory).
+
+###Examples
+
+####Basic Usage
+
+####Adding Custom Panel Dimensions
 
 License
 ======

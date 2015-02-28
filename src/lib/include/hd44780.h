@@ -35,18 +35,36 @@ extern "C" {
 #endif // __out
 
 /**
+ * Dimension type
+ */
+enum {
+	DIMENSION_16_1 = 0,			// 16x1 (0-0xf)
+	DIMENSION_16_2,				// 16x2 (0-0xf, 0x40-0x4f)
+	DIMENSION_16_4,				// 16x4 (0-0xf, 0x40-0x4f, 0x10-0x1f, 0x50-0x5f)
+	DIMENSION_20_2,				// 20x2 (0-0x13, 0x40-0x53)
+	DIMENSION_20_4,				// 20x4 (0-0x13, 0x40-0x53, 0x14-0x27, 0x54-0x67)
+	DIMENSION_40_2,				// 40x2 (0-0x27, 0x40-0x67)
+};
+
+#define DIMENSION_TYPE_MAX DIMENSION_40_2
+
+/**
  * Font table type
  */
-#define FONT_EN_JP 0				// English/Japanese character set
-#define FONT_EUROPE_1 1				// Western Europe 1 character set
-#define FONT_EN_RU 2				// English/Russian character set
-#define FONT_EUROPE_2 3				// Western Europe 2 character set
+enum {
+	FONT_EN_JP = 0,				// English/Japanese character set
+	FONT_EUROPE_1,				// Western Europe 1 character set
+	FONT_EN_RU,				// English/Russian character set
+	FONT_EUROPE_2,				// Western Europe 2 character set
+};
 
 /**
  * Interface type
  */
-#define INTERFACE_4_BIT 0			// all commands sent in 4-bit segments
-#define INTERFACE_8_BIT 1			// all comamnds sent in 8-bit segments
+enum {
+	INTERFACE_4_BIT = 0,			// all commands sent in 4-bit segments
+	INTERFACE_8_BIT,			// all comamnds sent in 8-bit segments
+};
 
 /**
  * Direction register name macro
@@ -100,6 +118,7 @@ typedef struct _hdcont_state_t {
  * Holds device context information
  */
 typedef struct _hdcont_t {
+	uint8_t dimension;			// dimension type
 	uint8_t interface;			// interface type
 	hdcont_comm_t comm;			// pin/port connections
 	hdcont_state_t state;			// cursor/display state
@@ -114,8 +133,7 @@ typedef struct _hdcont_t {
  * Device initialization macro
  * This macro must be called prior to any other device calls
  * @param _CONT_ caller supplied device context pointer
- * @param _COL_ device column count
- * @param _ROW_ device row count
+ * @param _DIM_ device dimension type
  * @param _INTER_ device interface type
  * @param _FONT_ device font table type
  * @param _DATA_ device data port
@@ -124,16 +142,14 @@ typedef struct _hdcont_t {
  * @param _DIR_ device direction pin
  * @param _E_ device enable pin
  */
-#define hd44780_initialize(_CONT_, _COL_, _ROW_, _INTER_, _FONT_, _DATA_, \
-		_CTRL_, _SEL_, _DIR_, _E_) \
-	_hd44780_initialize(_CONT_, _COL_, _ROW_, _INTER_, _FONT_, \
-	&DEFINE_DDR(_DATA_), &DEFINE_PORT(_DATA_), &DEFINE_DDR(_CTRL_), \
-	&DEFINE_PORT(_CTRL_), DEFINE_PIN(_CTRL_, _SEL_), DEFINE_PIN(_CTRL_, _DIR_), \
-	DEFINE_PIN(_CTRL_, _E_))
+#define hd44780_initialize(_CONT_, _DIM_, _INTER_, _FONT_, _DATA_, _CTRL_, _SEL_, \
+		_DIR_, _E_) \
+	_hd44780_initialize(_CONT_, _DIM_, _INTER_, _FONT_, &DEFINE_DDR(_DATA_), \
+	&DEFINE_PORT(_DATA_), &DEFINE_DDR(_CTRL_), &DEFINE_PORT(_CTRL_), \
+	DEFINE_PIN(_CTRL_, _SEL_), DEFINE_PIN(_CTRL_, _DIR_), DEFINE_PIN(_CTRL_, _E_))
 void _hd44780_initialize(
 	__out hdcont_t *context,
-	__in uint8_t column,
-	__in uint8_t row,
+	__in uint8_t dimension,
 	__in uint8_t interface,
 	__in uint8_t font,
 	__in volatile uint8_t *ddr_data,

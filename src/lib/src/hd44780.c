@@ -45,10 +45,36 @@
 #define FLAG_INTERFACE 0x10
 #define FLAG_SHIFT_RIGHT 0x2
 
-#define ROW_ADDRESS_SCALAR 0x40
-
 #define SELECT_COMMAND 0
 #define SELECT_DATA 1
+
+static const uint8_t DIMESION_COLUMN_LEN[] = {
+	16, 16, 16, 20, 20, 40,
+	};
+
+#define DIMENSION_COLUMN_LENGTH(_TYPE_) \
+	((_TYPE_) > DIMENSION_TYPE_MAX ? 0 : DIMESION_COLUMN_LEN[_TYPE_])
+
+static const uint8_t DIMESION_ROW_LEN[] = {
+	1, 2, 4, 2, 4, 2,
+	};
+
+#define DIMENSION_ROW_LENGTH(_TYPE_) \
+	((_TYPE_) > DIMENSION_TYPE_MAX ? 0 : DIMESION_ROW_LEN[_TYPE_])
+
+static const uint8_t *DIMESION_ROW_OFF[] = {
+	(uint8_t *) "\0",		// 16x1
+	(uint8_t *) "\0\x40",		// 16x2
+	(uint8_t *) "\0\x40\x10\x50",	// 16x4
+	(uint8_t *) "\0\x40",		// 20x2
+	(uint8_t *) "\0\x40\x14\x54",	// 20x4
+	(uint8_t *) "\0\x40",		// 40x2
+	};
+
+#define DIMENSION_ROW_OFFSET(_TYPE_, _ROW_) \
+	((_TYPE_) > DIMENSION_TYPE_MAX ? 0 : \
+	((_ROW_) >= DIMENSION_ROW_LENGTH(_ROW_) ? 0 : \
+	DIMESION_ROW_OFF[_TYPE_][_ROW_]))
 
 inline void 
 busy_wait_4(
@@ -251,7 +277,7 @@ hd4480_cursor_set(
 	uint8_t address;
 
 	if(context) {
-		address = (row * ROW_ADDRESS_SCALAR) + column;
+		address = DIMENSION_ROW_OFFSET(context->dimension, row) + column;
 		hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
 				COMMAND_ADDRESS_SET | address);
 		context->state.current_column = column;
@@ -336,8 +362,7 @@ hd44780_display_puts(
 void 
 _hd44780_initialize(
 	__out hdcont_t *context,
-	__in uint8_t column,
-	__in uint8_t row,
+	__in uint8_t dimension,
 	__in uint8_t interface,
 	__in uint8_t font,
 	__in volatile uint8_t *ddr_data,
@@ -350,13 +375,14 @@ _hd44780_initialize(
 	)
 {
 	if(context && ddr_control && ddr_data && port_control && port_data) {
+		context->dimension = dimension;
 		context->interface = interface;
 		context->state.current_column = 0;
 		context->state.current_row = 0;
 		context->state.cursor_blink = CURSOR_BLINK_OFF;
 		context->state.cursor_show = CURSOR_OFF;
-		context->state.dimension_column = column;
-		context->state.dimension_row = row;
+		context->state.dimension_column = DIMENSION_COLUMN_LENGTH(dimension);
+		context->state.dimension_row = DIMENSION_ROW_LENGTH(dimension);
 		context->state.display_show = DISPLAY_OFF;
 		context->comm.ddr_control = ddr_control;
 		context->comm.ddr_data = ddr_data;
@@ -439,5 +465,6 @@ hd44780_uninitialize(
 		context->state.dimension_row = 0;
 		context->state.display_show = DISPLAY_OFF;
 		context->interface = 0;
+		context->dimension = 0;
 	}
 }
