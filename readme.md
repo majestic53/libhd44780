@@ -164,7 +164,7 @@ main(void)
 }
 ```
 
-1. Pin/Port Configuration
+#####Pin/Port Configuration
 
 LIBHD4480 requires at least one port to operate in 4-bit mode (two ports in 8-bit mode). Start by defining the control (select/direction/enable) pin 
 configurations. In the example we chose PORTD pins 2 through 4. Next, select the data port.
@@ -180,7 +180,7 @@ configurations. In the example we chose PORTD pins 2 through 4. Next, select the
 **NOTE:** It is possible to combine control and data ports when using 4-bit mode. However, keep in mind that data in 4-bit mode occupies the lower 
 nibble of the port. In this case, make sure that the control pins use pins 4 - 7!
 
-2. Library Initialization
+#####Library Initialization
 
 LIBHD4480 is initialized as the first step. No device manipulations should occur prior to this call to avoid any undesired/undefined behavior.
 
@@ -224,7 +224,7 @@ enum {
 };
 ```
 
-3. Printing UART Input
+#####Printing UART Input
 
 After initialization, we are ready to manipulate the device. As a first step, we configure the cursor to show with blink enabled:
 
@@ -242,7 +242,7 @@ while(1) {
 
 **NOTE:** To extend this example, it might be useful to intercept control keys, such as CTRL^C, etc.
 
-4. Library Uninitialization
+#####Library Uninitialization
 
 Once we are done, LIBHD4480 is uninitialized as the final step. No further device manipulations should occur.
 
@@ -253,9 +253,9 @@ hd44780_uninitialize(&cont);
 ####Adding Custom Panel Dimensions
 
 In-order to handle the addressing scheme used in HD44780 panels, every new panel dimension will require a set of row offsets. However, it is fairly 
-trivial to add these new dimensions to LIBHD4480. Most of the time, the dimension offsets can be found in the panel specification document.
+trivial to add these new dimensions to LIBHD4480. Most of the time, the dimension offsets can be found in the panels specification document.
 
-1. Start by modifying the headers dimension enum:
+#####Start by modifying the headers dimension enum:
 
 ```c
 /**
@@ -277,7 +277,7 @@ enum {
 
 This enum value will be used during initialization to configure the device state.
 
-2. Next, modify LIBHD4480's source file:
+#####Next, modify LIBHD4480's source file:
 
 ```c
 static const uint8_t DIMESION_COLUMN_LEN[] = {
@@ -353,7 +353,7 @@ static const uint8_t *DIMESION_ROW_OFF[] = {
 	};
 ```
 
-3. Finally, during initialization, use the newly created dimension:
+#####Finally, during initialization, we use the newly created dimension:
 
 ```c
 	hd44780_initialize(&cont, DIMENSION_8_2_EXAMPLE, INTERFACE_4_BIT, FONT_EN_JP, 
