@@ -10,8 +10,8 @@ LIBHD44780 is an AVR library for controlling the HD44780 family of LCDs.
 * Compliant with most HD44780 panels (tested with a LCD and OLED panel)
 * Supports both 4 and 8-bit command modes
 * Supports a variety of panel dimensions: 16x1, 16x2, 16x4, 20x2, 20x4, 40x2
-* Additional panel dimensions can be added as needed. See the [Examples](https://github.com/majestic53/libhd44780#examples) section below for 
-more information.
+* Additional panel dimensions can be added as needed. See the 
+[Adding Custom Panel Dimensions](https://github.com/majestic53/libhd44780#adding-custom-panel-dimensions) section below for more information.
 
 ###Features NOT Supported
 
