@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string.h>
 #include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
@@ -43,7 +42,7 @@ uart_initialize(void)
 #else
 	UCSR0A &= ~_BV(U2X0);
 #endif // USE_2X
-	UCSR0B = _BV(RXEN0);
+	UCSR0B = (_BV(RXEN0) | _BV(TXEN0));
 	UCSR0C = (_BV(UCSZ01) | _BV(UCSZ00));
 }
 
@@ -59,10 +58,8 @@ main(void)
 {
 	hdcont_t cont;
 
-	memset(&cont, 0, sizeof(hdcont_t));
-
-	hd44780_initialize(&cont, DISPLAY_COL, DISPLAY_ROW, INTERFACE_8_BIT, FONT_EN_JP, 
-			SHIFT_RIGHT, PORT_DATA, PORT_CTRL, PIN_CTRL_RS, PIN_CTRL_RW, PIN_CTRL_E);
+	hd44780_initialize(&cont, DISPLAY_COL, DISPLAY_ROW, INTERFACE_4_BIT, FONT_EN_JP, 
+			PORT_DATA, PORT_CTRL, PIN_CTRL_RS, PIN_CTRL_RW, PIN_CTRL_E);
 
 	uart_initialize();
 	hd44780_cursor(&cont, CURSOR_ON, CURSOR_BLINK_ON);

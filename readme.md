@@ -16,6 +16,11 @@ Changelog
 =========
 
 ###Version 0.1.1509
+*Updated: 12/28/2015*
+
+* Added 4-bit support
+* Added comments
+
 *Updated: 12/26/2015*
 
 * More code refactoring

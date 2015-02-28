@@ -27,7 +27,7 @@
 #define COMMAND_ENTRY_MODE 0x4
 #define COMMAND_FUNCTION_SET 0x28
 
-#define DDR_INPUT_8 0
+#define DDR_OUTPUT_4 0xf
 #define DDR_OUTPUT_8 0xff
 
 #define DELAY_COMMAND 50 // us
@@ -55,9 +55,24 @@ busy_wait_4(
 	__in hdcont_t *context
 	)
 {
+	uint8_t busy;
+
 	if(context) {
-		
-		// TODO
+		*context->comm.ddr_data &= ~DDR_OUTPUT_4;
+		*context->comm.port_data &= ~DDR_OUTPUT_4;
+		*context->comm.port_control &= ~_BV(context->comm.pin_control_select);
+		*context->comm.port_control |= _BV(context->comm.pin_control_direction);
+
+		do {
+			*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
+			*context->comm.port_control |= _BV(context->comm.pin_control_enable);
+			_delay_us(DELAY_LATCH);
+			busy = (*context->comm.port_data & FLAG_BUSY_4);
+			*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
+			*context->comm.port_control |= _BV(context->comm.pin_control_enable);
+			_delay_us(DELAY_COMMAND);
+			*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
+		} while(busy);
 	}
 }
 
@@ -69,7 +84,8 @@ busy_wait_8(
 	uint8_t busy;
 
 	if(context) {
-		*context->comm.ddr_data = DDR_INPUT_8;
+		*context->comm.ddr_data &= ~DDR_OUTPUT_8;
+		*context->comm.port_data = 0;
 		*context->comm.port_control &= ~_BV(context->comm.pin_control_select);
 		*context->comm.port_control |= _BV(context->comm.pin_control_direction);
 
@@ -77,13 +93,26 @@ busy_wait_8(
 			*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
 			*context->comm.port_control |= _BV(context->comm.pin_control_enable);
 			_delay_us(DELAY_LATCH);
-			busy = ((*context->comm.port_data & FLAG_BUSY_8) == 1);
+			busy = (*context->comm.port_data & FLAG_BUSY_8);
 			*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
 		} while(busy);
+	}
+}
 
-		*context->comm.port_control &= ~_BV(context->comm.pin_control_select);
-		*context->comm.port_control &= ~_BV(context->comm.pin_control_direction);
-		*context->comm.ddr_data = DDR_OUTPUT_8;
+void 
+hd44780_command_4_nibble(
+	__in hdcont_t *context,
+	__in uint8_t data
+	)
+{
+	if(context) {
+		*context->comm.ddr_data |= DDR_OUTPUT_4;
+		*context->comm.port_data &= ~DDR_OUTPUT_4;
+		*context->comm.port_data |= data;
+		*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
+		*context->comm.port_control |= _BV(context->comm.pin_control_enable);
+		_delay_us(DELAY_COMMAND);
+		*context->comm.port_control &= ~_BV(context->comm.pin_control_enable);
 	}
 }
 
@@ -97,7 +126,24 @@ hd44780_command_4(
 {
 	if(context) {
 
-		// TODO
+		if(select) {
+			*context->comm.port_control |= _BV(context->comm.pin_control_select);
+		} else {
+			*context->comm.port_control &= ~_BV(context->comm.pin_control_select);
+		}
+
+		if(direction) {
+			*context->comm.port_control |= _BV(context->comm.pin_control_direction);
+		} else {
+			*context->comm.port_control &= ~_BV(context->comm.pin_control_direction);
+		}
+
+		hd44780_command_4_nibble(context, data >> 4);
+		hd44780_command_4_nibble(context, data);
+		busy_wait_4(context);
+		*context->comm.port_control &= ~_BV(context->comm.pin_control_select);
+		*context->comm.port_control &= ~_BV(context->comm.pin_control_direction);
+		*context->comm.port_data &= ~DDR_OUTPUT_4;
 	}
 }
 
@@ -294,7 +340,6 @@ _hd44780_initialize(
 	__in uint8_t row,
 	__in uint8_t interface,
 	__in uint8_t font,
-	__in uint8_t shift,
 	__in volatile uint8_t *ddr_data,
 	__in volatile uint8_t *port_data,
 	__in volatile uint8_t *ddr_control,
@@ -304,8 +349,6 @@ _hd44780_initialize(
 	__in uint8_t pin_control_enable
 	)
 {
-	uint8_t data = COMMAND_FUNCTION_SET | font;
-
 	if(context && ddr_control && ddr_data && port_control && port_data) {
 		context->interface = interface;
 		context->state.current_column = 0;
@@ -333,25 +376,33 @@ _hd44780_initialize(
 		if(context->interface) {
 			*context->comm.ddr_data = DDR_OUTPUT_8;
 			*context->comm.port_data = 0;
-			data |= FLAG_INTERFACE;
+			hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
+					COMMAND_FUNCTION_SET | FLAG_INTERFACE | font);
+			hd44780_cursor(context, CURSOR_OFF, CURSOR_BLINK_OFF);
+			hd44780_display(context, DISPLAY_OFF);
+			hd44780_display_clear(context);
+			hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
+					COMMAND_ENTRY_MODE | FLAG_SHIFT_RIGHT);
+			hd44780_cursor_home(context);
+			hd44780_display(context, DISPLAY_ON);
+			hd44780_cursor(context, CURSOR_ON, CURSOR_BLINK_ON);
 		} else {
-			// TODO
+			*context->comm.ddr_data |= DDR_OUTPUT_4;
+			*context->comm.port_data &= ~DDR_OUTPUT_4;
+			hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
+					COMMAND_FUNCTION_SET | FLAG_INTERFACE | font);
+			hd44780_command_4_nibble(context, COMMAND_CURSOR_HOME);
+			hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
+					COMMAND_FUNCTION_SET | font);
+			hd44780_cursor(context, CURSOR_OFF, CURSOR_BLINK_OFF);
+			hd44780_display(context, DISPLAY_OFF);
+			hd44780_display_clear(context);
+			hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, 
+					COMMAND_ENTRY_MODE | FLAG_SHIFT_RIGHT);
+			hd44780_cursor_home(context);
+			hd44780_display(context, DISPLAY_ON);
+			hd44780_cursor(context, CURSOR_ON, CURSOR_BLINK_ON);
 		}
-
-		hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, data);
-		hd44780_cursor(context, CURSOR_OFF, CURSOR_BLINK_OFF);
-		hd44780_display(context, DISPLAY_OFF);
-		hd44780_display_clear(context);
-		data = COMMAND_ENTRY_MODE;
-
-		if(shift) {
-			data |= FLAG_SHIFT_RIGHT;
-		}
-
-		hd44780_command(context, SELECT_COMMAND, FLAG_DIRECTION_OUTPUT, data);
-		hd44780_cursor_home(context);
-		hd44780_display(context, DISPLAY_ON);
-		hd44780_cursor(context, CURSOR_ON, CURSOR_BLINK_ON);
 	}
 }
 
@@ -360,7 +411,6 @@ hd44780_uninitialize(
 	__out hdcont_t *context
 	)
 {
-
 	if(context) {
 		hd44780_display_clear(context);
 		hd44780_cursor_home(context);
@@ -375,9 +425,10 @@ hd44780_uninitialize(
 
 		if(context->interface) {
 			*context->comm.port_data = 0;
-			*context->comm.ddr_data = DDR_INPUT_8;
+			*context->comm.ddr_data &= ~DDR_OUTPUT_8;
 		} else {
-			// TODO
+			*context->comm.port_data &= ~DDR_OUTPUT_4;
+			*context->comm.ddr_data &= ~DDR_OUTPUT_4;
 		}
 
 		context->state.current_column = 0;
