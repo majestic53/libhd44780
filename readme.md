@@ -3,6 +3,8 @@ LIBHD44780
 
 LIBHD44780 is an AVR library for controlling the HD44780 family of LCDs.
 
+![Hello Github](https://dl.dropboxusercontent.com/u/6410544/hd44780/hello.jpg)
+
 ###Supported Features
 
 * Compliant with most HD44780 panels (tested with a LCD and OLED panel)
@@ -20,6 +22,7 @@ Table of Contents
 1. [Changelog](https://github.com/majestic53/libhd44780#changelog)
 2. [Usage](https://github.com/majestic53/libhd44780#usage)
 	* [Build](https://github.com/majestic53/libhd44780#build)
+	* [Concepts](https://github.com/majestic53/libhd44780#concepts)
 	* [Examples](https://github.com/majestic53/libhd44780#examples)
 		* [Basic Usage](https://github.com/majestic53/libhd44780#basic-usage)
 		* [Adding Custom Panel Dimensions](https://github.com/majestic53/libhd44780#adding-custom-panel-dimensions)
@@ -65,10 +68,12 @@ Usage
 
 **NOTE:** You will need to install avr-gcc if you don't already have it.
 
-To use LIBHD44780 in your own project, simply include the header file ```hd44780.h```, found under ```./src/lib/include```, in your project.
+To use LIBHD44780 in your own project, simply include the header file ```hd44780.h``` and c file ```hd44780.c```, found under ```./src/lib/include``` and ```./src/lib/src```, in your project.
 
-To build the sample project, compile the core library using the accompanying makefile. The makefile will produce a series of 
-object files (found in the ```./build``` directory), and a series of hex files (found in the ```./bin``` directory).
+To build the sample project, compile using the accompanying makefile. The makefile will produce a series of 
+object files (found in the ```./build``` directory), and a series of binary files (found in the ```./bin``` directory).
+
+###Concepts
 
 ###Examples
 
