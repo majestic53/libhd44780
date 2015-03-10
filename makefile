@@ -19,7 +19,7 @@
 
 # Change these to match your device
 # NOTE: frequencies less than 8MHz might not work!
-F_CPU=1000000
+F_CPU=8000000
 DEV=atmega328p
 DEV_SRT=m328p
 

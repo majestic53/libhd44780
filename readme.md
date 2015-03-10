@@ -32,32 +32,37 @@ Table of Contents
 Changelog
 =========
 
+###Version 0.1.1511
+*Updated: 3/9/2015*
+
+* Updated sample code
+
 ###Version 0.1.1509
-*Updated: 12/28/2015*
+*Updated: 2/28/2015*
 
 * Added 4-bit support
 * Added panel dimension support
 * Added comments/documentation
 
-*Updated: 12/26/2015*
+*Updated: 2/26/2015*
 
 * More code refactoring
 * Removed tracing/error handling
 * Added 4-bit support (partial)
 
-*Updated: 12/25/2015*
+*Updated: 2/25/2015*
 
 * Code refactoring
 
-*Updated: 12/24/2015*
+*Updated: 2/24/2015*
 
 * Added init/uninit commands (tested on a 16x2 LCD and OLED display, cold/warm boot)
 
-*Updated: 12/23/2015*
+*Updated: 2/23/2015*
 
 * Code cleanup (overhaul)
 
-*Updated: 12/22/2015*
+*Updated: 2/22/2015*
 
 * Repo creation
 * Added USART tracing functionality

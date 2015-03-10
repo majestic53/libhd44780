@@ -20,11 +20,11 @@
 #include <util/delay.h>
 #include "../lib/include/hd44780.h"
 
-#define PIN_CTRL_E 2 // PD2
-#define PIN_CTRL_RS 4 // PD4
-#define PIN_CTRL_RW 3 // PD3
+#define PIN_CTRL_E 2 // PC2
+#define PIN_CTRL_RS 0 // PC0
+#define PIN_CTRL_RW 1 // PC1
 #define PORT_DATA B // PORTB
-#define PORT_CTRL D // PORTD
+#define PORT_CTRL C // PORTC
 
 #define BAUD 9600
 #include <util/setbaud.h>
